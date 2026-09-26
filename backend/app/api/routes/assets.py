@@ -7,7 +7,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.asset import Asset
 from app.schemas.asset import AssetResponse
-from app.services.storage import upload_file, generate_presigned_url, get_object
+from app.services.storage import upload_file, generate_presigned_url, get_file_bytes_or_stream
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -38,7 +38,7 @@ async def upload_asset(
     db.commit()
     db.refresh(asset)
 
-    signed_url = generate_presigned_url(storage_key, expires_in=86400)
+    signed_url = generate_presigned_url(storage_key, expires_in=86400, asset_id=str(asset.id))
 
     return {
         "asset": asset,
@@ -55,7 +55,7 @@ def get_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
-    signed_url = generate_presigned_url(asset.storage_key, expires_in=86400)
+    signed_url = generate_presigned_url(asset.storage_key, expires_in=86400, asset_id=str(asset.id))
     return {
         "asset": asset,
         "url": signed_url
@@ -72,8 +72,7 @@ def stream_asset(
         raise HTTPException(status_code=404, detail="Asset not found")
     
     try:
-        s3_obj = get_object(asset.storage_key)
-        body = s3_obj["Body"]
+        body = get_file_bytes_or_stream(asset.storage_key)
         return StreamingResponse(body, media_type=asset.mime_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to stream asset: {str(e)}")

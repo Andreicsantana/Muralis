@@ -35,6 +35,7 @@
           :show-handles="!isMaskMode"
           :mask-canvas="maskCanvas"
           @update-point="handleUpdatePoint"
+          @update-points="handleUpdatePoints"
           @drag-start="handleDragStart"
           @drag-end="handleDragEnd"
         />
@@ -141,6 +142,10 @@ const copied = ref(false);
 
 function handleUpdatePoint(index: number, point: Point2D) {
   projectStore.setCornerPoint(index, point);
+}
+
+function handleUpdatePoints(points: [Point2D, Point2D, Point2D, Point2D]) {
+  projectStore.setCornerPoints(points);
 }
 
 function handleDragStart() {

@@ -1,20 +1,19 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Uuid, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False, default="Untitled Project")
-    base_photo_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
-    art_asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
-    mask_asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
-    corner_points = Column(JSONB, nullable=False, default=lambda: [
+    base_photo_id = Column(Uuid(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
+    art_asset_id = Column(Uuid(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
+    mask_asset_id = Column(Uuid(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
+    corner_points = Column(JSON, nullable=False, default=lambda: [
         {"x": 0.1, "y": 0.1},
         {"x": 0.9, "y": 0.1},
         {"x": 0.9, "y": 0.9},

@@ -1,15 +1,14 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Uuid
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 class Asset(Base):
     __tablename__ = "assets"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50), nullable=False)  # 'photo', 'art', 'mask', 'export'
     storage_key = Column(String(512), nullable=False)
     width = Column(Integer, nullable=True)

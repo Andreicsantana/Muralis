@@ -7,6 +7,7 @@
       :corner-points="cornerPoints"
       :canvas-bounds="bounds"
       @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
+      @update-points="(pts) => $emit('updatePoints', pts)"
       @drag-start="() => $emit('dragStart')"
       @drag-end="() => $emit('dragEnd')"
     />
@@ -33,6 +34,7 @@ const props = defineProps<{
 
 defineEmits<{
   (e: 'updatePoint', index: number, point: Point2D): void;
+  (e: 'updatePoints', points: [Point2D, Point2D, Point2D, Point2D]): void;
   (e: 'dragStart'): void;
   (e: 'dragEnd'): void;
 }>();

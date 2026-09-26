@@ -69,11 +69,16 @@ export const useProjectStore = defineStore('project', () => {
   function setCornerPoint(index: number, point: Point2D) {
     if (index >= 0 && index < 4) {
       currentProject.value.cornerPoints[index] = {
-        x: Math.max(0, Math.min(1, point.x)),
-        y: Math.max(0, Math.min(1, point.y))
+        x: point.x,
+        y: point.y
       };
       currentProject.value.isDirty = true;
     }
+  }
+
+  function setCornerPoints(points: [Point2D, Point2D, Point2D, Point2D]) {
+    currentProject.value.cornerPoints = points;
+    currentProject.value.isDirty = true;
   }
 
   function setBasePhoto(url: string) {
@@ -179,6 +184,7 @@ export const useProjectStore = defineStore('project', () => {
     undo,
     redo,
     setCornerPoint,
+    setCornerPoints,
     setBasePhoto,
     setArtAsset,
     setBlendMode,
