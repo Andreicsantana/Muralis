@@ -3,11 +3,12 @@ import { drawWarpedImage } from './meshWarp.js';
 
 export type BlendMode = 'normal' | 'multiply' | 'overlay' | 'soft-light';
 
-export type ValidCanvasImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
+export type ValidBaseImage = HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | OffscreenCanvas;
+export type ValidArtImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
 
 export interface RenderState {
-  baseImage: ValidCanvasImage | null;
-  artImage: ValidCanvasImage | null;
+  baseImage: ValidBaseImage | null;
+  artImage: ValidArtImage | null;
   maskCanvas?: HTMLCanvasElement | OffscreenCanvas | null;
   cornerPoints: [Point2D, Point2D, Point2D, Point2D];
   blendMode: BlendMode;

@@ -1,33 +1,43 @@
 <template>
-  <div class="h-full bg-slate-950 flex flex-col overflow-hidden">
-    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 z-10">
+  <div class="h-full bg-asphalt-950 flex flex-col overflow-hidden select-none">
+    <!-- Street Presentation Header -->
+    <header class="h-16 bg-asphalt-900 border-b-2 border-asphalt-700 flex items-center justify-between px-6 z-10">
       <div class="flex items-center space-x-3">
-        <div class="w-7 h-7 rounded bg-brand-600 flex items-center justify-center font-bold text-white text-xs">
+        <div class="px-2.5 py-1 bg-spray-pink text-white font-tag text-base tracking-wider rounded-sm shadow-spray-pink transform -rotate-1">
           M
         </div>
         <div>
-          <h1 class="text-xs font-bold text-white">{{ project?.title || 'Visualização do Mural' }}</h1>
-          <span class="text-[10px] text-slate-400">Modo Somente Visualização</span>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-display font-black text-sm text-white uppercase tracking-tight">
+              {{ project?.title || 'Simulação de Mural' }}
+            </h1>
+            <span class="px-1.5 py-0.5 bg-spray-volt/20 text-spray-volt text-[9px] font-mono font-bold tracking-widest uppercase">
+              3D PREVIEW
+            </span>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400 block -mt-0.5">
+            MURALIS STREET LAB // VISUALIZAÇÃO PÚBLICA
+          </span>
         </div>
       </div>
 
       <button
         v-if="project"
-        class="py-1.5 px-3 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-medium flex items-center space-x-1.5"
+        class="py-2 px-4 bg-spray-volt hover:bg-spray-voltHover text-asphalt-950 rounded-sm text-xs font-mono font-black uppercase tracking-wider flex items-center space-x-2 shadow-spray-volt transition-all active:scale-95"
         @click="downloadPreview"
       >
-        <DownloadIcon class="w-3.5 h-3.5" />
-        <span>Baixar Imagem</span>
+        <DownloadIcon class="w-4 h-4 stroke-[3]" />
+        <span>Baixar Imagem HD</span>
       </button>
     </header>
 
-    <main class="flex-1 relative flex items-center justify-center p-4 overflow-hidden">
-      <div v-if="loading" class="text-xs text-slate-500">
-        Carregando simulação...
+    <main class="flex-1 relative flex items-center justify-center p-4 overflow-hidden bg-[#07080a]">
+      <div v-if="loading" class="text-xs font-mono text-slate-400 animate-pulse">
+        [ CARREGANDO SIMULAÇÃO DE MURO... ]
       </div>
 
-      <div v-else-if="error" class="text-xs text-red-400">
-        {{ error }}
+      <div v-else-if="error" class="text-xs font-mono text-rose-400 bg-rose-950/40 p-4 border border-rose-700">
+        [!] {{ error }}
       </div>
 
       <ViewportCanvas
@@ -74,11 +84,15 @@ async function fetchSharedProject() {
 
 async function downloadPreview() {
   if (!viewportRef.value) return;
-  const dataUrl = await viewportRef.value.exportHighRes();
-  const link = document.createElement('a');
-  link.download = `${project.value?.title || 'mural'}_preview.png`;
-  link.href = dataUrl;
-  link.click();
+  try {
+    const dataUrl = await viewportRef.value.exportHighRes('image/png');
+    const link = document.createElement('a');
+    link.download = `${project.value?.title || 'mural'}-muralis.png`;
+    link.href = dataUrl;
+    link.click();
+  } catch (err) {
+    console.error('Failed to export preview', err);
+  }
 }
 
 onMounted(() => {

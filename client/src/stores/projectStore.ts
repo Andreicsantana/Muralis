@@ -176,6 +176,47 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function loadProject(id: string) {
+    try {
+      const p = await apiRequest(`/projects/${id}`);
+      currentProject.value = {
+        id: p.id,
+        title: p.title || 'Mural',
+        basePhotoUrl: p.basePhoto?.url || null,
+        artAssetUrl: p.artAsset?.url || null,
+        maskCanvas: null,
+        cornerPoints: p.cornerPoints || [
+          { x: 0.15, y: 0.15 },
+          { x: 0.85, y: 0.15 },
+          { x: 0.85, y: 0.85 },
+          { x: 0.15, y: 0.85 }
+        ],
+        blendMode: p.blendMode || 'multiply',
+        opacity: p.opacity ?? 0.9,
+        brightness: p.brightness ?? 1.0,
+        contrast: p.contrast ?? 1.0,
+        isDirty: false
+      };
+    } catch {
+      const offlineP = await db.projects.get(id);
+      if (offlineP) {
+        currentProject.value = {
+          id: offlineP.id,
+          title: offlineP.title,
+          basePhotoUrl: null,
+          artAssetUrl: null,
+          maskCanvas: null,
+          cornerPoints: offlineP.cornerPoints as any,
+          blendMode: offlineP.blendMode as any,
+          opacity: offlineP.opacity,
+          brightness: offlineP.brightness,
+          contrast: offlineP.contrast,
+          isDirty: false
+        };
+      }
+    }
+  }
+
   return {
     currentProject,
     history,
@@ -192,6 +233,7 @@ export const useProjectStore = defineStore('project', () => {
     setBrightness,
     setContrast,
     resetProject,
-    saveProject
+    saveProject,
+    loadProject
   };
 });

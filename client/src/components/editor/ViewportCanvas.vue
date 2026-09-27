@@ -1,9 +1,22 @@
 <template>
-  <div ref="containerRef" class="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
+  <div
+    ref="containerRef"
+    class="relative w-full h-full bg-[#07080a] flex items-center justify-center overflow-hidden cursor-default"
+    @pointerdown="handleContainerPointerDown"
+  >
     <canvas ref="canvasRef" class="shadow-2xl rounded-sm"></canvas>
 
+    <video
+      ref="videoRef"
+      class="hidden"
+      playsinline
+      autoplay
+      muted
+    ></video>
+
+    <!-- Selection & Perspective Handles (Visible only when selected) -->
     <CornerHandles
-      v-if="showHandles && bounds.width > 0 && artImage"
+      v-if="showHandles && isSelected && bounds.width > 0 && artImage"
       :corner-points="cornerPoints"
       :canvas-bounds="bounds"
       @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
@@ -11,13 +24,22 @@
       @drag-start="() => $emit('dragStart')"
       @drag-end="() => $emit('dragEnd')"
     />
+
+    <!-- Quick Hint when deselected -->
+    <div
+      v-if="showHandles && !isSelected && artImage"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-asphalt-950/80 border border-asphalt-700 text-slate-400 font-mono text-[10px] rounded-sm pointer-events-none shadow-md"
+    >
+      [ Clique na arte para selecionar // Esc para desmarcar ]
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, reactive, shallowRef } from 'vue';
 import { Point2D } from '../../engine/homography.js';
-import { BlendMode, compositeLayers, RenderState } from '../../engine/blendEngine.js';
+import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
+import { calculateAutoFitCorners } from '../../engine/autoFit.js';
 import CornerHandles from './CornerHandles.vue';
 
 const props = defineProps<{
@@ -30,20 +52,27 @@ const props = defineProps<{
   contrast: number;
   showHandles: boolean;
   maskCanvas?: HTMLCanvasElement | null;
+  isCameraActive?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'updatePoint', index: number, point: Point2D): void;
   (e: 'updatePoints', points: [Point2D, Point2D, Point2D, Point2D]): void;
   (e: 'dragStart'): void;
   (e: 'dragEnd'): void;
+  (e: 'cameraFrameCaptured', dataUrl: string): void;
+  (e: 'cameraError', error: string): void;
 }>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
 
 const baseImage = shallowRef<HTMLImageElement | null>(null);
 const artImage = shallowRef<HTMLImageElement | null>(null);
+const mediaStream = shallowRef<MediaStream | null>(null);
+
+const isSelected = ref(true);
 
 const bounds = reactive({
   width: 0,
@@ -64,7 +93,116 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+/**
+ * Ray casting point-in-polygon test for 4-point convex quad
+ */
+function isPointInsideQuad(pt: Point2D, quad: [Point2D, Point2D, Point2D, Point2D]): boolean {
+  let inside = false;
+  for (let i = 0, j = quad.length - 1; i < quad.length; j = i++) {
+    const xi = quad[i].x, yi = quad[i].y;
+    const xj = quad[j].x, yj = quad[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+      (pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function handleContainerPointerDown(e: PointerEvent) {
+  if (!canvasRef.value) {
+    isSelected.value = false;
+    return;
+  }
+
+  const canvasRect = canvasRef.value.getBoundingClientRect();
+  if (canvasRect.width === 0 || canvasRect.height === 0) {
+    isSelected.value = false;
+    return;
+  }
+
+  const normX = (e.clientX - canvasRect.left) / canvasRect.width;
+  const normY = (e.clientY - canvasRect.top) / canvasRect.height;
+
+  // Check if click is inside the canvas bounds and inside the artwork quad
+  if (normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1) {
+    const inside = isPointInsideQuad({ x: normX, y: normY }, props.cornerPoints);
+    isSelected.value = inside;
+  } else {
+    isSelected.value = false;
+  }
+}
+
+async function startCamera() {
+  stopCamera();
+  try {
+    const constraints: MediaStreamConstraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    mediaStream.value = stream;
+
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+      await videoRef.value.play();
+      updateLayout();
+      startContinuousRender();
+      autoFitWall();
+      isSelected.value = true;
+    }
+  } catch (err: any) {
+    console.error('Failed to start camera', err);
+    emit('cameraError', err.message || 'Não foi possível acessar a câmera.');
+  }
+}
+
+function stopCamera() {
+  if (mediaStream.value) {
+    mediaStream.value.getTracks().forEach(track => track.stop());
+    mediaStream.value = null;
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null;
+  }
+  stopContinuousRender();
+}
+
+function captureCameraFrame(): string | null {
+  if (!videoRef.value || !mediaStream.value) return null;
+
+  const video = videoRef.value;
+  const capCanvas = document.createElement('canvas');
+  capCanvas.width = video.videoWidth || 1280;
+  capCanvas.height = video.videoHeight || 720;
+  const ctx = capCanvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.drawImage(video, 0, 0, capCanvas.width, capCanvas.height);
+  const dataUrl = capCanvas.toDataURL('image/jpeg', 0.92);
+  emit('cameraFrameCaptured', dataUrl);
+  return dataUrl;
+}
+
+function autoFitWall(options?: { scaleFactor?: number; manualSlope?: number | null; verticalOffset?: number }) {
+  const baseTarget: ValidBaseImage | null = props.isCameraActive && videoRef.value
+    ? videoRef.value
+    : baseImage.value;
+
+  if (artImage.value) {
+    const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, options);
+    emit('updatePoints', autoCorners);
+    isSelected.value = true;
+  }
+}
+
 async function updateBaseImage() {
+  if (props.isCameraActive) return;
+
   if (!props.basePhotoUrl) {
     baseImage.value = null;
     requestRender();
@@ -73,6 +211,8 @@ async function updateBaseImage() {
   try {
     baseImage.value = await loadImage(props.basePhotoUrl);
     updateLayout();
+    autoFitWall();
+    isSelected.value = true;
     requestRender();
   } catch (err) {
     console.error('Failed to load base photo', err);
@@ -87,6 +227,8 @@ async function updateArtImage() {
   }
   try {
     artImage.value = await loadImage(props.artAssetUrl);
+    autoFitWall();
+    isSelected.value = true;
     requestRender();
   } catch (err) {
     console.error('Failed to load art asset', err);
@@ -100,8 +242,16 @@ function updateLayout() {
   const cWidth = containerRect.width - 32;
   const cHeight = containerRect.height - 32;
 
-  let imgW = baseImage.value?.naturalWidth || 800;
-  let imgH = baseImage.value?.naturalHeight || 600;
+  let imgW = 800;
+  let imgH = 600;
+
+  if (props.isCameraActive && videoRef.value && videoRef.value.videoWidth > 0) {
+    imgW = videoRef.value.videoWidth;
+    imgH = videoRef.value.videoHeight;
+  } else if (baseImage.value) {
+    imgW = baseImage.value.naturalWidth;
+    imgH = baseImage.value.naturalHeight;
+  }
 
   const aspect = imgW / imgH;
   let renderW = cWidth;
@@ -128,8 +278,29 @@ function updateLayout() {
   bounds.top = canvasRect.top;
 }
 
+function startContinuousRender() {
+  if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+
+  const loop = () => {
+    render();
+    if (props.isCameraActive) {
+      animationFrameId = requestAnimationFrame(loop);
+    }
+  };
+  animationFrameId = requestAnimationFrame(loop);
+}
+
+function stopContinuousRender() {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
+
 function requestRender() {
+  if (props.isCameraActive) return;
   if (animationFrameId !== null) return;
+
   animationFrameId = requestAnimationFrame(() => {
     animationFrameId = null;
     render();
@@ -141,8 +312,12 @@ function render() {
   const ctx = canvasRef.value.getContext('2d');
   if (!ctx) return;
 
+  const currentBase: ValidBaseImage | null = props.isCameraActive && videoRef.value
+    ? videoRef.value
+    : baseImage.value;
+
   const state: RenderState = {
-    baseImage: baseImage.value,
+    baseImage: currentBase,
     artImage: artImage.value,
     maskCanvas: props.maskCanvas,
     cornerPoints: props.cornerPoints,
@@ -156,18 +331,19 @@ function render() {
 }
 
 async function exportHighRes(mimeType = 'image/png'): Promise<string> {
-  const naturalW = baseImage.value?.naturalWidth || 1920;
-  const naturalH = baseImage.value?.naturalHeight || 1080;
+  const currentBase = props.isCameraActive && videoRef.value ? videoRef.value : baseImage.value;
+  const naturalW = currentBase ? ('videoWidth' in currentBase ? currentBase.videoWidth : currentBase.naturalWidth) : 1920;
+  const naturalH = currentBase ? ('videoHeight' in currentBase ? currentBase.videoHeight : currentBase.naturalHeight) : 1080;
 
   const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = naturalW;
-  exportCanvas.height = naturalH;
+  exportCanvas.width = naturalW || 1920;
+  exportCanvas.height = naturalH || 1080;
 
   const exportCtx = exportCanvas.getContext('2d');
   if (!exportCtx) throw new Error('Could not create export canvas context');
 
   const state: RenderState = {
-    baseImage: baseImage.value,
+    baseImage: currentBase,
     artImage: artImage.value,
     maskCanvas: props.maskCanvas,
     cornerPoints: props.cornerPoints,
@@ -177,13 +353,34 @@ async function exportHighRes(mimeType = 'image/png'): Promise<string> {
     contrast: props.contrast
   };
 
-  compositeLayers(exportCtx, naturalW, naturalH, state, 32);
+  compositeLayers(exportCtx, exportCanvas.width, exportCanvas.height, state, 32);
   return exportCanvas.toDataURL(mimeType, 0.95);
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    isSelected.value = false;
+  }
 }
 
 defineExpose({
   exportHighRes,
-  updateLayout
+  updateLayout,
+  startCamera,
+  stopCamera,
+  captureCameraFrame,
+  autoFitWall,
+  select: () => (isSelected.value = true),
+  deselect: () => (isSelected.value = false)
+});
+
+watch(() => props.isCameraActive, (active) => {
+  if (active) {
+    startCamera();
+  } else {
+    stopCamera();
+    updateBaseImage();
+  }
 });
 
 watch(() => props.basePhotoUrl, updateBaseImage);
@@ -197,7 +394,9 @@ watch(
     () => props.contrast,
     () => props.maskCanvas
   ],
-  requestRender,
+  () => {
+    if (!props.isCameraActive) requestRender();
+  },
   { deep: true }
 );
 
@@ -211,12 +410,20 @@ onMounted(() => {
     });
     resizeObserver.observe(containerRef.value);
   }
-  updateBaseImage();
+  if (props.isCameraActive) {
+    startCamera();
+  } else {
+    updateBaseImage();
+  }
   updateArtImage();
+
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onBeforeUnmount(() => {
+  stopCamera();
   if (resizeObserver) resizeObserver.disconnect();
-  if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+  stopContinuousRender();
+  window.removeEventListener('keydown', handleKeyDown);
 });
 </script>
