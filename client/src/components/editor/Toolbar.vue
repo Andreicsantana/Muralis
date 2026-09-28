@@ -135,23 +135,38 @@
           <span class="text-[11px] font-mono text-slate-400 uppercase">Direção do Muro:</span>
           <div class="grid grid-cols-3 gap-1.5">
             <button
-              class="py-1.5 px-2 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 hover:border-spray-pink text-slate-200 rounded-sm text-xs font-mono font-semibold text-center transition-all"
-              title="Muro fugindo para a esquerda"
-              @click="$emit('applyPreset', -0.32)"
+              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              :class="
+                currentSlope !== null && currentSlope !== undefined && currentSlope < -0.1
+                  ? 'bg-spray-pink border-spray-pink text-white shadow-spray-pink'
+                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-pink text-slate-200'
+              "
+              title="Muro fugindo para a esquerda (mantém tamanho e posição)"
+              @click="$emit('applyPreset', -0.28)"
             >
               <span>◀ Esq.</span>
             </button>
             <button
-              class="py-1.5 px-2 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 hover:border-spray-volt text-slate-200 rounded-sm text-xs font-mono font-semibold text-center transition-all"
-              title="Muro visto de frente"
+              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              :class="
+                currentSlope !== null && currentSlope !== undefined && Math.abs(currentSlope) <= 0.1
+                  ? 'bg-spray-volt border-spray-volt text-asphalt-950 shadow-spray-volt'
+                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-volt text-slate-200'
+              "
+              title="Muro visto de frente (mantém tamanho e posição)"
               @click="$emit('applyPreset', 0)"
             >
               <span>Frontal</span>
             </button>
             <button
-              class="py-1.5 px-2 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 hover:border-spray-yellow text-slate-200 rounded-sm text-xs font-mono font-semibold text-center transition-all"
-              title="Muro fugindo para a direita"
-              @click="$emit('applyPreset', 0.32)"
+              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              :class="
+                currentSlope !== null && currentSlope !== undefined && currentSlope > 0.1
+                  ? 'bg-spray-yellow border-spray-yellow text-asphalt-950 shadow-spray-yellow'
+                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-yellow text-slate-200'
+              "
+              title="Muro fugindo para a direita (mantém tamanho e posição)"
+              @click="$emit('applyPreset', 0.28)"
             >
               <span>Dir. ▶</span>
             </button>
@@ -404,10 +419,12 @@ const props = withDefaults(
     isCameraActive?: boolean;
     artScale?: number;
     verticalPosition?: number;
+    currentSlope?: number | null;
   }>(),
   {
     artScale: 0.70,
-    verticalPosition: 0
+    verticalPosition: 0,
+    currentSlope: null
   }
 );
 

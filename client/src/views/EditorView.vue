@@ -94,6 +94,7 @@
       :is-camera-active="isCameraActive"
       :art-scale="artScale"
       :vertical-position="verticalPosition"
+      :current-slope="manualSlope"
       @update:blend-mode="projectStore.setBlendMode"
       @update:opacity="projectStore.setOpacity"
       @update:brightness="projectStore.setBrightness"
@@ -246,7 +247,10 @@ function handleAutoFit() {
 
 function handleApplyPreset(slope: number) {
   manualSlope.value = slope;
-  handleAutoFit();
+  if (viewportRef.value) {
+    projectStore.pushHistory();
+    viewportRef.value.applyDirectionPreset(slope);
+  }
 }
 
 function handleUpdateArtScale(val: number) {

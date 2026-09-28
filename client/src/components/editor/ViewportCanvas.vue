@@ -39,7 +39,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, reactive, shallowRef } from 'vue';
 import { Point2D } from '../../engine/homography.js';
 import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
-import { calculateAutoFitCorners } from '../../engine/autoFit.js';
+import { calculateAutoFitCorners, applyDirectionToQuad } from '../../engine/autoFit.js';
 import CornerHandles from './CornerHandles.vue';
 
 const props = defineProps<{
@@ -197,6 +197,15 @@ function autoFitWall(options?: { scaleFactor?: number; manualSlope?: number | nu
     const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, options);
     emit('updatePoints', autoCorners);
     isSelected.value = true;
+  }
+}
+
+function applyDirectionPreset(slope: number) {
+  if (props.cornerPoints) {
+    const updatedCorners = applyDirectionToQuad(props.cornerPoints, slope);
+    emit('updatePoints', updatedCorners);
+    isSelected.value = true;
+    requestRender();
   }
 }
 
@@ -370,6 +379,7 @@ defineExpose({
   stopCamera,
   captureCameraFrame,
   autoFitWall,
+  applyDirectionPreset,
   select: () => (isSelected.value = true),
   deselect: () => (isSelected.value = false)
 });

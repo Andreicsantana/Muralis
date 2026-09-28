@@ -89,13 +89,14 @@ export function calculateAutoFitCorners(
   const leftSlopeOffset = leftDx * slope;
   const rightSlopeOffset = rightDx * slope;
 
-  // Foreshortening factor: farther side is shorter
-  const foreshortening = slope * 0.4;
-  const leftHeightRatio = 1 - (slope > 0 ? -foreshortening : foreshortening);
-  const rightHeightRatio = 1 - (slope > 0 ? foreshortening : -foreshortening);
+  // Foreshortening factor: farther side is shorter, closer side is taller
+  // Average height (safeLeftHalfH + safeRightHalfH) / 2 remains exactly equal to halfH
+  const foreshortening = slope * 0.35;
+  const leftHeightRatio = 1 + foreshortening;
+  const rightHeightRatio = 1 - foreshortening;
 
-  const safeLeftHalfH = halfH * Math.max(0.5, Math.min(1.5, leftHeightRatio));
-  const safeRightHalfH = halfH * Math.max(0.5, Math.min(1.5, rightHeightRatio));
+  const safeLeftHalfH = halfH * Math.max(0.4, Math.min(1.6, leftHeightRatio));
+  const safeRightHalfH = halfH * Math.max(0.4, Math.min(1.6, rightHeightRatio));
 
   // Top-Left (0), Top-Right (1), Bottom-Right (2), Bottom-Left (3)
   const p0: Point2D = {
@@ -116,6 +117,65 @@ export function calculateAutoFitCorners(
   const p3: Point2D = {
     x: xLeft,
     y: Math.max(0.05, Math.min(0.98, (wallCenterY + leftSlopeOffset) + safeLeftHalfH))
+  };
+
+  return [p0, p1, p2, p3];
+}
+
+/**
+ * Adjusts the perspective direction (left, frontal, right) of an existing artwork quad
+ * WITHOUT changing its overall size, dimensions, aspect ratio, or position on the wall.
+ */
+export function applyDirectionToQuad(
+  currentQuad: [Point2D, Point2D, Point2D, Point2D],
+  slope: number
+): [Point2D, Point2D, Point2D, Point2D] {
+  // 1. Compute current center of the artwork
+  const cx = (currentQuad[0].x + currentQuad[1].x + currentQuad[2].x + currentQuad[3].x) / 4;
+  const cy = (currentQuad[0].y + currentQuad[1].y + currentQuad[2].y + currentQuad[3].y) / 4;
+
+  // 2. Compute current average width and height
+  const topW = Math.hypot(currentQuad[1].x - currentQuad[0].x, currentQuad[1].y - currentQuad[0].y);
+  const botW = Math.hypot(currentQuad[2].x - currentQuad[3].x, currentQuad[2].y - currentQuad[3].y);
+  const avgW = (topW + botW) / 2;
+
+  const leftH = Math.hypot(currentQuad[3].x - currentQuad[0].x, currentQuad[3].y - currentQuad[0].y);
+  const rightH = Math.hypot(currentQuad[2].x - currentQuad[1].x, currentQuad[2].y - currentQuad[1].y);
+  const avgH = (leftH + rightH) / 2;
+
+  const halfW = Math.max(0.04, Math.min(0.48, avgW / 2));
+  const halfH = Math.max(0.04, Math.min(0.48, avgH / 2));
+
+  // 3. Vanishing foreshortening preserving total average height
+  const foreshortening = slope * 0.35;
+  const leftHalfH = halfH * Math.max(0.4, Math.min(1.6, 1 + foreshortening));
+  const rightHalfH = halfH * Math.max(0.4, Math.min(1.6, 1 - foreshortening));
+
+  // 4. Slope offsets for perspective slant
+  const leftSlopeOffset = -halfW * slope;
+  const rightSlopeOffset = halfW * slope;
+
+  const xLeft = Math.max(0.01, Math.min(0.99, cx - halfW));
+  const xRight = Math.max(0.01, Math.min(0.99, cx + halfW));
+
+  const p0: Point2D = {
+    x: Number(xLeft.toFixed(4)),
+    y: Number(Math.max(0.01, Math.min(0.98, (cy + leftSlopeOffset) - leftHalfH)).toFixed(4))
+  };
+
+  const p1: Point2D = {
+    x: Number(xRight.toFixed(4)),
+    y: Number(Math.max(0.01, Math.min(0.98, (cy + rightSlopeOffset) - rightHalfH)).toFixed(4))
+  };
+
+  const p2: Point2D = {
+    x: Number(xRight.toFixed(4)),
+    y: Number(Math.max(0.02, Math.min(0.99, (cy + rightSlopeOffset) + rightHalfH)).toFixed(4))
+  };
+
+  const p3: Point2D = {
+    x: Number(xLeft.toFixed(4)),
+    y: Number(Math.max(0.02, Math.min(0.99, (cy + leftSlopeOffset) + leftHalfH)).toFixed(4))
   };
 
   return [p0, p1, p2, p3];
