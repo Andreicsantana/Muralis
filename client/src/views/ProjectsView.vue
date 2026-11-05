@@ -44,7 +44,7 @@
             Muros & Fachadas
           </h2>
           <p class="text-xs font-mono text-slate-400 mt-1">
-            Gerencie seus murais, alinhamentos de perspectiva e oclusões de rua.
+            Gerencie seus murais salvos localmente ou na nuvem.
           </p>
         </div>
 
@@ -91,11 +91,17 @@
           <div class="h-48 bg-asphalt-950 flex items-center justify-center relative overflow-hidden border-b border-asphalt-800">
             <!-- Street Tag Badge -->
             <div class="absolute top-3 left-3 px-2 py-0.5 bg-asphalt-900/90 border border-asphalt-700 text-[10px] font-mono text-spray-volt font-semibold tracking-wider uppercase z-10">
-              {{ proj.blendMode.toUpperCase() }}
+              {{ (proj.blendMode || 'multiply').toUpperCase() }}
             </div>
 
-            <!-- Visual Texture -->
-            <div class="w-full h-full flex items-center justify-center bg-gradient-to-b from-asphalt-900/30 to-asphalt-950 group-hover:scale-105 transition-transform duration-300">
+            <!-- Preview thumbnail if available -->
+            <img
+              v-if="proj.basePhotoUrl"
+              :src="proj.basePhotoUrl"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              alt="Mural preview"
+            />
+            <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-b from-asphalt-900/30 to-asphalt-950 group-hover:scale-105 transition-transform duration-300">
               <span class="font-tag text-slate-700 group-hover:text-spray-pink/40 transition-colors text-2xl tracking-widest uppercase">
                 MURAL
               </span>
@@ -109,7 +115,7 @@
                 {{ proj.title || 'Mural Sem Título' }}
               </h4>
               <span class="text-[11px] font-mono text-slate-500 block mt-0.5">
-                Atualizado: {{ new Date(proj.updatedAt).toLocaleDateString('pt-BR') }}
+                Atualizado: {{ new Date(proj.updatedAt || Date.now()).toLocaleDateString('pt-BR') }}
               </span>
             </div>
 
@@ -134,6 +140,7 @@ import { Plus as PlusIcon, FolderPlus as FolderPlusIcon, Trash2 as Trash2Icon } 
 import { useAuthStore } from '../stores/authStore.js';
 import { useProjectStore } from '../stores/projectStore.js';
 import { apiRequest } from '../services/apiClient.js';
+import { db } from '../services/offlineDb.js';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -145,10 +152,11 @@ const loading = ref(true);
 async function loadProjects() {
   loading.value = true;
   try {
-    const data = await apiRequest('/projects');
-    projects.value = data;
-  } catch (err) {
-    console.error('Failed to load projects', err);
+    const remoteProjects = await apiRequest('/projects');
+    projects.value = remoteProjects;
+  } catch {
+    const localProjects = await db.projects.toArray();
+    projects.value = localProjects.sort((a, b) => b.updatedAt - a.updatedAt);
   } finally {
     loading.value = false;
   }
@@ -164,10 +172,13 @@ async function deleteProject(id: string) {
 
   try {
     await apiRequest(`/projects/${id}`, { method: 'DELETE' });
-    projects.value = projects.value.filter(p => p.id !== id);
-  } catch (err) {
-    console.error('Failed to delete project', err);
-  }
+  } catch {}
+
+  try {
+    await db.projects.delete(id);
+  } catch {}
+
+  projects.value = projects.value.filter(p => p.id !== id);
 }
 
 onMounted(() => {

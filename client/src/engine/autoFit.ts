@@ -185,7 +185,7 @@ export function applyDirectionToQuad(
  * Uses Hough transform and line segment analysis to filter out organic noise (trees, sky)
  * and find the true structural lines of the wall plane.
  */
-function detectWallPlane(
+export function detectWallPlane(
   source: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement
 ): WallPlane {
   try {

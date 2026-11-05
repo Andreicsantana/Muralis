@@ -1,6 +1,5 @@
 <template>
-  <div class="absolute inset-0 pointer-events-none overflow-hidden select-none">
-    <!-- Graffiti Bounding Polygon -->
+  <div ref="handlesContainerRef" class="absolute inset-0 pointer-events-none overflow-visible select-none">
     <svg class="w-full h-full pointer-events-none">
       <polygon
         :points="polygonPoints"
@@ -11,7 +10,6 @@
         class="pointer-events-auto cursor-move touch-none transition-colors hover:fill-[rgba(255,0,85,0.18)]"
         @pointerdown="startMoveDrag"
       />
-      <!-- Diagonal Guide Crosslines -->
       <line
         v-if="screenPoints.length === 4"
         :x1="screenPoints[0].x"
@@ -36,13 +34,12 @@
       />
     </svg>
 
-    <!-- Center Move Handle: Spray Nozzle / Crosshair Tag -->
     <div
       v-if="centerPoint.x > 0 && centerPoint.y > 0"
       class="absolute -ml-6 -mt-6 w-12 h-12 rounded-full bg-asphalt-950/95 border-2 border-spray-pink shadow-spray-pink cursor-move pointer-events-auto flex items-center justify-center transition-transform hover:scale-110 active:scale-95 group touch-none z-30"
       :style="{ left: `${centerPoint.x}px`, top: `${centerPoint.y}px` }"
       @pointerdown="startMoveDrag"
-      title="Segure e arraste para mover toda a arte pelo muro"
+      title="Mover arte"
     >
       <div class="w-2.5 h-2.5 rounded-full bg-spray-pink group-hover:bg-spray-volt transition-colors shadow-spray-pink"></div>
       <svg
@@ -56,14 +53,13 @@
       </svg>
     </div>
 
-    <!-- 4 Corner Handles: Stencil Neon Reticles -->
     <div
       v-for="(point, index) in screenPoints"
       :key="index"
-      class="absolute w-8 h-8 -ml-4 -mt-4 rounded-sm bg-asphalt-950 border-2 border-spray-volt shadow-spray-volt cursor-grab active:cursor-grabbing pointer-events-auto flex items-center justify-center transition-transform hover:scale-125 touch-none z-40 group"
+      class="absolute w-11 h-11 md:w-8 md:h-8 -ml-5.5 -mt-5.5 md:-ml-4 md:-mt-4 rounded-sm bg-asphalt-950/90 border-2 border-spray-volt shadow-spray-volt cursor-grab active:cursor-grabbing pointer-events-auto flex items-center justify-center transition-transform hover:scale-125 touch-none z-40 group"
       :style="{ left: `${point.x}px`, top: `${point.y}px` }"
       @pointerdown="(e) => startCornerDrag(index, e)"
-      :title="`Vértice ${index + 1} - Ajustar Perspectiva`"
+      :title="`Vértice ${index + 1}`"
     >
       <div class="w-2 h-2 rounded-full bg-spray-volt group-hover:bg-white transition-colors"></div>
       <span class="absolute -bottom-4 text-[9px] font-mono font-bold text-spray-volt tracking-tighter pointer-events-none bg-asphalt-950/80 px-1">
@@ -74,12 +70,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { Point2D } from '../../engine/homography.js';
 
 const props = defineProps<{
   cornerPoints: [Point2D, Point2D, Point2D, Point2D];
-  canvasBounds: { width: number; height: number; left: number; top: number };
+  canvasBounds: { width: number; height: number; screenX?: number; screenY?: number };
 }>();
 
 const emit = defineEmits<{
@@ -89,11 +85,13 @@ const emit = defineEmits<{
   (e: 'dragEnd'): void;
 }>();
 
+const handlesContainerRef = ref<HTMLDivElement | null>(null);
+
 const screenPoints = computed(() => {
-  const { width, height, left, top } = props.canvasBounds;
+  const { width, height } = props.canvasBounds;
   return props.cornerPoints.map(p => ({
-    x: left + p.x * width,
-    y: top + p.y * height
+    x: p.x * width,
+    y: p.y * height
   }));
 });
 
@@ -119,12 +117,16 @@ function startCornerDrag(index: number, event: PointerEvent) {
 
   emit('dragStart');
 
+  const containerRect = handlesContainerRef.value?.getBoundingClientRect();
+  const screenX = containerRect ? containerRect.left : (props.canvasBounds.screenX ?? 0);
+  const screenY = containerRect ? containerRect.top : (props.canvasBounds.screenY ?? 0);
+
   const onPointerMove = (moveEvent: PointerEvent) => {
-    const { width, height, left, top } = props.canvasBounds;
+    const { width, height } = props.canvasBounds;
     if (width === 0 || height === 0) return;
 
-    const normalizedX = (moveEvent.clientX - left) / width;
-    const normalizedY = (moveEvent.clientY - top) / height;
+    const normalizedX = (moveEvent.clientX - screenX) / width;
+    const normalizedY = (moveEvent.clientY - screenY) / height;
 
     emit('updatePoint', index, { x: normalizedX, y: normalizedY });
   };

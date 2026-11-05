@@ -3,9 +3,9 @@ import Dexie, { type EntityTable } from 'dexie';
 export interface LocalProject {
   id: string;
   title: string;
-  basePhotoBlob?: Blob | null;
-  artAssetBlob?: Blob | null;
-  maskAssetBlob?: Blob | null;
+  basePhotoUrl?: string | null;
+  artAssetUrl?: string | null;
+  maskCanvasData?: string | null;
   cornerPoints: { x: number; y: number }[];
   blendMode: 'normal' | 'multiply' | 'overlay' | 'soft-light';
   opacity: number;

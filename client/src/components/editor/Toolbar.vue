@@ -1,7 +1,10 @@
 <template>
-  <aside class="w-80 bg-asphalt-900 border-l-2 border-asphalt-700 flex flex-col h-full overflow-y-auto text-sm select-none">
+  <aside class="w-full md:w-80 bg-asphalt-900 border-t-2 md:border-t-0 md:border-l-2 border-asphalt-700 flex flex-col h-full overflow-y-auto text-sm select-none pb-20 md:pb-0">
+    <!-- Mobile Drawer Drag Handle -->
+    <div class="md:hidden w-12 h-1.5 bg-asphalt-600 rounded-full mx-auto my-2 shrink-0"></div>
+
     <!-- Header: Toolbox HUD -->
-    <div class="p-4 border-b-2 border-asphalt-700 flex items-center justify-between bg-asphalt-950/60">
+    <div class="p-3 md:p-4 border-b-2 border-asphalt-700 flex items-center justify-between bg-asphalt-950/60 sticky top-0 z-20">
       <div>
         <span class="text-[10px] font-mono text-spray-pink font-bold uppercase tracking-widest block">
           // CONTROLES DE RUA
@@ -10,6 +13,13 @@
       </div>
 
       <div class="flex items-center space-x-1.5">
+        <button
+          class="md:hidden p-2 rounded-sm bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 text-slate-300 hover:text-white mr-1"
+          title="Fechar Painel"
+          @click="$emit('closeMobile')"
+        >
+          <XIcon class="w-3.5 h-3.5 text-spray-pink" />
+        </button>
         <button
           class="p-2 rounded-sm bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 text-slate-300 hover:text-white disabled:opacity-25 transition-all"
           :disabled="!canUndo"
@@ -62,6 +72,15 @@
               Exemplo
             </button>
           </div>
+          <!-- Edit / Crop Artwork Button -->
+          <button
+            v-if="hasArt"
+            class="mt-2 w-full py-1.5 px-2.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 hover:border-spray-pink rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center justify-center space-x-2 transition-all active:scale-95"
+            @click="$emit('openImageEditor')"
+          >
+            <CropIcon class="w-3.5 h-3.5 text-spray-pink" />
+            <span>Editar / Cortar Arte</span>
+          </button>
 
           <!-- Live Camera Button -->
           <div class="mt-2 flex items-center space-x-2">
@@ -402,7 +421,9 @@ import {
   Share2 as Share2Icon,
   Camera as CameraIcon,
   Check as CheckIcon,
-  Wand2 as Wand2Icon
+  Wand2 as Wand2Icon,
+  X as XIcon,
+  Crop as CropIcon
 } from 'lucide-vue-next';
 
 const props = withDefaults(
@@ -420,6 +441,7 @@ const props = withDefaults(
     artScale?: number;
     verticalPosition?: number;
     currentSlope?: number | null;
+    hasArt?: boolean;
   }>(),
   {
     artScale: 0.70,
@@ -450,6 +472,8 @@ const emit = defineEmits<{
   (e: 'toggleCamera'): void;
   (e: 'captureCamera'): void;
   (e: 'autoFit'): void;
+  (e: 'closeMobile'): void;
+  (e: 'openImageEditor'): void;
 }>();
 
 const verticalPositionLabel = computed(() => {

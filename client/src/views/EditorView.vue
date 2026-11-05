@@ -1,55 +1,66 @@
 <template>
-  <div class="flex h-full w-full bg-asphalt-950 overflow-hidden select-none">
+  <div class="flex flex-col md:flex-row h-full w-full bg-asphalt-950 overflow-hidden select-none safe-top safe-bottom relative">
     <main class="flex-1 relative flex flex-col h-full overflow-hidden">
       <!-- Street Artist Header -->
-      <header class="h-14 bg-asphalt-900 border-b-2 border-asphalt-700 flex items-center justify-between px-4 z-10">
-        <div class="flex items-center space-x-3">
+      <header class="h-14 bg-asphalt-900 border-b-2 border-asphalt-700 flex items-center justify-between px-3 md:px-4 z-10">
+        <div class="flex items-center space-x-2 md:space-x-3 min-w-0">
           <router-link
             to="/projects"
-            class="text-xs font-mono font-bold text-slate-400 hover:text-spray-pink flex items-center space-x-1.5 uppercase transition-colors"
+            class="text-xs font-mono font-bold text-slate-400 hover:text-spray-pink flex items-center space-x-1 uppercase transition-colors shrink-0"
           >
             <ArrowLeftIcon class="w-4 h-4 stroke-[2.5]" />
-            <span>Galeria</span>
+            <span class="hidden sm:inline">Galeria</span>
           </router-link>
 
-          <div class="h-4 w-px bg-asphalt-700"></div>
+          <div class="h-4 w-px bg-asphalt-700 shrink-0"></div>
 
-          <div class="flex items-center space-x-2">
-            <span class="text-spray-pink font-mono text-xs font-bold">[MURAL]</span>
+          <div class="flex items-center space-x-1.5 min-w-0">
+            <span class="text-spray-pink font-mono text-xs font-bold shrink-0">[MURAL]</span>
             <input
               v-model="projectStore.currentProject.title"
               type="text"
-              class="bg-transparent border-b border-transparent hover:border-asphalt-600 focus:border-spray-pink text-xs font-mono font-bold text-white px-1 py-0.5 focus:outline-none uppercase tracking-wider"
-              placeholder="NOME DO MURAL / PROJETO"
+              class="bg-transparent border-b border-transparent hover:border-asphalt-600 focus:border-spray-pink text-xs font-mono font-bold text-white px-1 py-0.5 focus:outline-none uppercase tracking-wider truncate max-w-[130px] sm:max-w-xs"
+              placeholder="NOME DO MURAL"
             />
           </div>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 shrink-0">
           <span
             v-if="isCameraActive"
-            class="px-2.5 py-1 bg-rose-500/20 border border-rose-500 text-rose-300 rounded-sm text-[10px] font-mono font-black tracking-widest flex items-center space-x-1.5 animate-pulse"
+            class="px-2 py-0.5 bg-rose-500/20 border border-rose-500 text-rose-300 rounded-sm text-[9px] md:text-[10px] font-mono font-black tracking-widest flex items-center space-x-1 animate-pulse"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-            <span>CÂMERA AO VIVO // RA</span>
+            <span>CÂMERA ATIVA</span>
           </span>
           <span
             v-else-if="projectStore.currentProject.isDirty"
-            class="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-sm text-[10px] font-mono font-bold tracking-wider"
+            class="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-sm text-[9px] md:text-[10px] font-mono font-bold"
           >
             ● NÃO SALVO
           </span>
           <span
             v-else
-            class="px-2 py-0.5 bg-spray-volt/15 border border-spray-volt/40 text-spray-volt rounded-sm text-[10px] font-mono font-bold tracking-wider"
+            class="px-2 py-0.5 bg-spray-volt/15 border border-spray-volt/40 text-spray-volt rounded-sm text-[9px] md:text-[10px] font-mono font-bold"
           >
-            ✓ SALVO NO ESTÚDIO
+            ✓ SALVO
           </span>
+
+          <!-- Mobile Toggle Toolbar Button: Opens Drawer from Bottom -->
+          <button
+            class="md:hidden p-2 rounded-sm font-mono text-xs font-bold uppercase flex items-center space-x-1 transition-all active:scale-95 shadow-md"
+            :class="isMobileToolbarOpen ? 'bg-asphalt-800 border border-asphalt-600 text-white' : 'bg-spray-pink text-white shadow-spray-pink'"
+            @click="isMobileToolbarOpen = !isMobileToolbarOpen"
+            title="Ajustes e Camadas"
+          >
+            <SlidersIcon class="w-3.5 h-3.5" />
+            <span>{{ isMobileToolbarOpen ? 'Fechar' : 'Ajustes' }}</span>
+          </button>
         </div>
       </header>
 
       <!-- Viewport Canvas Work Area -->
-      <div class="flex-1 relative overflow-hidden flex items-center justify-center p-4 bg-[#07080a]">
+      <div class="flex-1 relative overflow-hidden flex items-center justify-center p-2 md:p-4 bg-[#07080a]">
         <ViewportCanvas
           ref="viewportRef"
           :base-photo-url="projectStore.currentProject.basePhotoUrl"
@@ -78,47 +89,106 @@
           @mask-updated="handleMaskUpdated"
         />
       </div>
+
+      <!-- Mobile Quick Floating Action Bar on Bottom -->
+      <div
+        v-if="!isMobileToolbarOpen"
+        class="md:hidden absolute bottom-4 left-4 right-4 z-20 flex items-center justify-center space-x-2 pointer-events-none"
+      >
+        <div class="bg-asphalt-900/90 backdrop-blur-md border-2 border-asphalt-700 p-1.5 rounded-sm shadow-2xl flex items-center space-x-2 pointer-events-auto">
+          <button
+            class="py-1.5 px-3 bg-spray-pink text-white font-mono text-xs font-bold uppercase rounded-sm flex items-center space-x-1 shadow-spray-pink active:scale-95"
+            @click="handleToggleCamera"
+          >
+            <CameraIcon class="w-3.5 h-3.5" />
+            <span>{{ isCameraActive ? 'Parar Câmera' : 'Ligar Câmera' }}</span>
+          </button>
+
+          <button
+            v-if="isCameraActive"
+            class="py-1.5 px-3 bg-spray-volt text-asphalt-950 font-mono text-xs font-black uppercase rounded-sm shadow-spray-volt active:scale-95"
+            @click="handleCaptureCamera"
+          >
+            <CheckIcon class="w-3.5 h-3.5 stroke-[3]" />
+            <span>Congelar Foto</span>
+          </button>
+
+          <button
+            class="py-1.5 px-3 bg-asphalt-800 text-slate-200 border border-asphalt-600 font-mono text-xs font-bold uppercase rounded-sm flex items-center space-x-1 active:scale-95"
+            @click="isMobileToolbarOpen = true"
+          >
+            <SlidersIcon class="w-3.5 h-3.5 text-spray-volt" />
+            <span>Ajustes</span>
+          </button>
+        </div>
+      </div>
     </main>
 
-    <!-- Side Tool Controls -->
-    <Toolbar
-      :blend-mode="projectStore.currentProject.blendMode"
-      :opacity="projectStore.currentProject.opacity"
-      :brightness="projectStore.currentProject.brightness"
-      :contrast="projectStore.currentProject.contrast"
-      :can-undo="projectStore.historyIndex > 0"
-      :can-redo="projectStore.historyIndex < projectStore.history.length - 1"
-      :is-mask-mode="isMaskMode"
-      :brush-size="brushSize"
-      :is-eraser="isEraser"
-      :is-camera-active="isCameraActive"
-      :art-scale="artScale"
-      :vertical-position="verticalPosition"
-      :current-slope="manualSlope"
-      @update:blend-mode="projectStore.setBlendMode"
-      @update:opacity="projectStore.setOpacity"
-      @update:brightness="projectStore.setBrightness"
-      @update:contrast="projectStore.setContrast"
-      @update:brush-size="(val) => (brushSize = val)"
-      @update:is-eraser="(val) => (isEraser = val)"
-      @update:art-scale="handleUpdateArtScale"
-      @update:vertical-position="handleUpdateVerticalPosition"
-      @apply-preset="handleApplyPreset"
-      @toggle-mask-mode="isMaskMode = !isMaskMode"
-      @clear-mask="handleClearMask"
-      @undo="projectStore.undo"
-      @redo="projectStore.redo"
-      @save="handleSave"
-      @share="handleShare"
-      @export="handleExport"
-      @base-loaded="handleBaseLoaded"
-      @art-loaded="handleArtLoaded"
-      @toggle-camera="handleToggleCamera"
-      @capture-camera="handleCaptureCamera"
-      @auto-fit="handleAutoFit"
+    <!-- Mobile Drawer (Top-Down Slide) / Desktop Sidebar -->
+    <div
+      class="fixed md:static inset-x-0 bottom-0 md:inset-auto z-40 md:z-auto transition-transform duration-300 ease-out md:translate-y-0"
+      :class="isMobileToolbarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0 pointer-events-none md:pointer-events-auto'"
+    >
+      <!-- Mobile Backdrop below drawer -->
+      <div
+        v-if="isMobileToolbarOpen"
+        class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs -z-10"
+        @click="isMobileToolbarOpen = false"
+      ></div>
+
+      <!-- Drawer Body: Max 70% of screen height from top on mobile, full height on desktop -->
+      <div class="h-[75vh] md:h-full w-full md:w-80 shadow-2xl border-t-2 md:border-t-0 md:border-l-2 rounded-t-xl md:rounded-none border-asphalt-700 flex flex-col pointer-events-auto bg-asphalt-900">
+        <Toolbar
+          :blend-mode="projectStore.currentProject.blendMode"
+          :opacity="projectStore.currentProject.opacity"
+          :brightness="projectStore.currentProject.brightness"
+          :contrast="projectStore.currentProject.contrast"
+          :can-undo="projectStore.historyIndex > 0"
+          :can-redo="projectStore.historyIndex < projectStore.history.length - 1"
+          :is-mask-mode="isMaskMode"
+          :brush-size="brushSize"
+          :is-eraser="isEraser"
+          :is-camera-active="isCameraActive"
+          :art-scale="artScale"
+          :vertical-position="verticalPosition"
+          :current-slope="manualSlope"
+          @update:blend-mode="projectStore.setBlendMode"
+          @update:opacity="projectStore.setOpacity"
+          @update:brightness="projectStore.setBrightness"
+          @update:contrast="projectStore.setContrast"
+          @update:brush-size="(val) => (brushSize = val)"
+          @update:is-eraser="(val) => (isEraser = val)"
+          @update:art-scale="handleUpdateArtScale"
+          @update:vertical-position="handleUpdateVerticalPosition"
+          @apply-preset="handleApplyPreset"
+          @toggle-mask-mode="isMaskMode = !isMaskMode"
+          @clear-mask="handleClearMask"
+          @undo="projectStore.undo"
+          @redo="projectStore.redo"
+          @save="handleSave"
+          @share="handleShare"
+          @export="handleExport"
+          @base-loaded="handleBaseLoaded"
+          @art-loaded="handleArtLoaded"
+          @toggle-camera="handleToggleCamera"
+          @capture-camera="handleCaptureCamera"
+          @auto-fit="handleAutoFit"
+          @close-mobile="isMobileToolbarOpen = false"
+          :has-art="!!projectStore.currentProject.artAssetUrl"
+          @open-image-editor="handleOpenImageEditor"
+        />
+      </div>
+    </div>
+
+    <!-- Image Editor Modal -->
+    <ImageEditorModal
+      :is-open="isImageEditorOpen"
+      :image-url="projectStore.currentProject.artAssetUrl"
+      @close="isImageEditorOpen = false"
+      @save="handleSaveEditedArt"
     />
 
-    <!-- Share Modal (Street Poster style) -->
+    <!-- Share Modal -->
     <div
       v-if="shareModalOpen"
       class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-text"
@@ -134,7 +204,7 @@
         </div>
 
         <p class="text-xs font-mono text-slate-400 leading-relaxed">
-          Envie o link público para seu cliente ou contratante visualizar o mural no muro em 3D em qualquer dispositivo.
+          Envie o link público para seu cliente ou contratante visualizar o mural no muro em qualquer dispositivo.
         </p>
 
         <div class="flex items-center space-x-2">
@@ -167,13 +237,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowLeft as ArrowLeftIcon } from 'lucide-vue-next';
+import { ArrowLeft as ArrowLeftIcon, Sliders as SlidersIcon, Camera as CameraIcon, Check as CheckIcon } from 'lucide-vue-next';
 import { useProjectStore } from '../stores/projectStore.js';
 import { Point2D } from '../engine/homography.js';
 import ViewportCanvas from '../components/editor/ViewportCanvas.vue';
 import Toolbar from '../components/editor/Toolbar.vue';
 import MaskBrush from '../components/editor/MaskBrush.vue';
+import ImageEditorModal from '../components/editor/ImageEditorModal.vue';
 import { apiRequest } from '../services/apiClient.js';
+import { ensureCameraPermissions } from '../services/permissionService.js';
 
 const route = useRoute();
 const projectStore = useProjectStore();
@@ -181,6 +253,7 @@ const projectStore = useProjectStore();
 const viewportRef = ref<InstanceType<typeof ViewportCanvas> | null>(null);
 const maskBrushRef = ref<InstanceType<typeof MaskBrush> | null>(null);
 
+const isMobileToolbarOpen = ref(false);
 const isMaskMode = ref(false);
 const brushSize = ref(30);
 const isEraser = ref(false);
@@ -189,6 +262,19 @@ const isCameraActive = ref(false);
 const artScale = ref(0.70);
 const verticalPosition = ref(0);
 const manualSlope = ref<number | null>(null);
+const isImageEditorOpen = ref(false);
+
+function handleOpenImageEditor() {
+  if (projectStore.currentProject.artAssetUrl) {
+    isImageEditorOpen.value = true;
+  }
+}
+
+function handleSaveEditedArt(newUrl: string) {
+  projectStore.pushHistory();
+  projectStore.setArtAsset(newUrl);
+  projectStore.saveProject();
+}
 
 const shareModalOpen = ref(false);
 const shareUrl = ref('');
@@ -210,8 +296,17 @@ function handleDragEnd() {
   projectStore.saveProject();
 }
 
-function handleToggleCamera() {
-  isCameraActive.value = !isCameraActive.value;
+async function handleToggleCamera() {
+  if (!isCameraActive.value) {
+    const perm = await ensureCameraPermissions();
+    if (!perm.granted) {
+      alert(perm.error || 'Permissão para usar a câmera não concedida.');
+      return;
+    }
+    isCameraActive.value = true;
+  } else {
+    isCameraActive.value = false;
+  }
 }
 
 function handleCaptureCamera() {
@@ -279,6 +374,7 @@ function handleClearMask() {
 function handleBaseLoaded(url: string) {
   projectStore.pushHistory();
   projectStore.setBasePhoto(url);
+  isCameraActive.value = false;
 }
 
 function handleArtLoaded(url: string) {
@@ -338,6 +434,18 @@ onMounted(async () => {
   const projectId = route.params.id as string;
   if (projectId) {
     await projectStore.loadProject(projectId);
+  }
+
+  // Camera active by default if no static base photo is already loaded
+  if (!projectStore.currentProject.basePhotoUrl) {
+    try {
+      const perm = await ensureCameraPermissions();
+      if (perm.granted) {
+        isCameraActive.value = true;
+      }
+    } catch (e) {
+      console.warn('Auto camera start skipped:', e);
+    }
   }
 });
 </script>

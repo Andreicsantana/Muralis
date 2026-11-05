@@ -4,33 +4,35 @@
     class="relative w-full h-full bg-[#07080a] flex items-center justify-center overflow-hidden cursor-default"
     @pointerdown="handleContainerPointerDown"
   >
-    <canvas ref="canvasRef" class="shadow-2xl rounded-sm"></canvas>
+    <div class="relative flex items-center justify-center shadow-2xl rounded-sm">
+      <canvas ref="canvasRef" class="rounded-sm block"></canvas>
 
-    <video
-      ref="videoRef"
-      class="hidden"
-      playsinline
-      autoplay
-      muted
-    ></video>
+      <video
+        ref="videoRef"
+        class="hidden"
+        playsinline
+        autoplay
+        muted
+      ></video>
 
-    <!-- Selection & Perspective Handles (Visible only when selected) -->
-    <CornerHandles
-      v-if="showHandles && isSelected && bounds.width > 0 && artImage"
-      :corner-points="cornerPoints"
-      :canvas-bounds="bounds"
-      @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
-      @update-points="(pts) => $emit('updatePoints', pts)"
-      @drag-start="() => $emit('dragStart')"
-      @drag-end="() => $emit('dragEnd')"
-    />
+      <!-- Selection & Perspective Handles (Visible only when selected) -->
+      <CornerHandles
+        v-if="showHandles && isSelected && bounds.width > 0 && artImage"
+        :corner-points="cornerPoints"
+        :canvas-bounds="bounds"
+        @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
+        @update-points="(pts) => $emit('updatePoints', pts)"
+        @drag-start="() => $emit('dragStart')"
+        @drag-end="() => $emit('dragEnd')"
+      />
 
-    <!-- Quick Hint when deselected -->
-    <div
-      v-if="showHandles && !isSelected && artImage"
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-asphalt-950/80 border border-asphalt-700 text-slate-400 font-mono text-[10px] rounded-sm pointer-events-none shadow-md"
-    >
-      [ Clique na arte para selecionar // Esc para desmarcar ]
+      <!-- Quick Hint when deselected -->
+      <div
+        v-if="showHandles && !isSelected && artImage"
+        class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-asphalt-950/80 border border-asphalt-700 text-slate-400 font-mono text-[10px] rounded-sm pointer-events-none shadow-md"
+      >
+        [ Clique na arte para selecionar // Esc para desmarcar ]
+      </div>
     </div>
   </div>
 </template>
@@ -39,7 +41,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, reactive, shallowRef } from 'vue';
 import { Point2D } from '../../engine/homography.js';
 import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
-import { calculateAutoFitCorners, applyDirectionToQuad } from '../../engine/autoFit.js';
+import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane } from '../../engine/autoFit.js';
 import CornerHandles from './CornerHandles.vue';
 
 const props = defineProps<{
@@ -77,8 +79,8 @@ const isSelected = ref(true);
 const bounds = reactive({
   width: 0,
   height: 0,
-  left: 0,
-  top: 0
+  screenX: 0,
+  screenY: 0
 });
 
 let animationFrameId: number | null = null;
@@ -93,9 +95,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Ray casting point-in-polygon test for 4-point convex quad
- */
 function isPointInsideQuad(pt: Point2D, quad: [Point2D, Point2D, Point2D, Point2D]): boolean {
   let inside = false;
   for (let i = 0, j = quad.length - 1; i < quad.length; j = i++) {
@@ -123,7 +122,6 @@ function handleContainerPointerDown(e: PointerEvent) {
   const normX = (e.clientX - canvasRect.left) / canvasRect.width;
   const normY = (e.clientY - canvasRect.top) / canvasRect.height;
 
-  // Check if click is inside the canvas bounds and inside the artwork quad
   if (normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1) {
     const inside = isPointInsideQuad({ x: normX, y: normY }, props.cornerPoints);
     isSelected.value = inside;
@@ -193,11 +191,36 @@ function autoFitWall(options?: { scaleFactor?: number; manualSlope?: number | nu
     ? videoRef.value
     : baseImage.value;
 
-  if (artImage.value) {
-    const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, options);
-    emit('updatePoints', autoCorners);
-    isSelected.value = true;
+  if (!artImage.value) return;
+
+  const quad = props.cornerPoints;
+  const hasExistingQuad = quad && quad.length === 4 &&
+    Math.abs(quad[1].x - quad[0].x) > 0.05 &&
+    Math.abs(quad[2].y - quad[1].y) > 0.05;
+
+  let slope = 0;
+  if (baseTarget) {
+    const wall = detectWallPlane(baseTarget);
+    slope = Math.abs(wall.slope) < 0.04 ? 0 : wall.slope;
   }
+
+  if (options?.manualSlope !== undefined && options.manualSlope !== null) {
+    slope = options.manualSlope;
+  }
+
+  if (hasExistingQuad) {
+    const updatedCorners = applyDirectionToQuad(quad, slope);
+    emit('updatePoints', updatedCorners);
+  } else {
+    const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, {
+      ...options,
+      manualSlope: slope
+    });
+    emit('updatePoints', autoCorners);
+  }
+
+  isSelected.value = true;
+  requestRender();
 }
 
 function applyDirectionPreset(slope: number) {
@@ -283,8 +306,8 @@ function updateLayout() {
   const canvasRect = canvas.getBoundingClientRect();
   bounds.width = renderW;
   bounds.height = renderH;
-  bounds.left = canvasRect.left;
-  bounds.top = canvasRect.top;
+  bounds.screenX = canvasRect.left;
+  bounds.screenY = canvasRect.top;
 }
 
 function startContinuousRender() {
@@ -321,7 +344,7 @@ function render() {
   const ctx = canvasRef.value.getContext('2d');
   if (!ctx) return;
 
-  const currentBase: ValidBaseImage | null = props.isCameraActive && videoRef.value
+  const currentBase: ValidBaseImage | null = props.isCameraActive && videoRef.value && videoRef.value.readyState >= 2
     ? videoRef.value
     : baseImage.value;
 
@@ -336,13 +359,18 @@ function render() {
     contrast: props.contrast
   };
 
-  compositeLayers(ctx, canvasRef.value.width, canvasRef.value.height, state);
+  compositeLayers(ctx, canvasRef.value.width, canvasRef.value.height, state, 16);
 }
 
-async function exportHighRes(mimeType = 'image/png'): Promise<string> {
-  const currentBase = props.isCameraActive && videoRef.value ? videoRef.value : baseImage.value;
-  const naturalW = currentBase ? ('videoWidth' in currentBase ? currentBase.videoWidth : currentBase.naturalWidth) : 1920;
-  const naturalH = currentBase ? ('videoHeight' in currentBase ? currentBase.videoHeight : currentBase.naturalHeight) : 1080;
+async function exportHighRes(mimeType: 'image/png' | 'image/jpeg' = 'image/png'): Promise<string> {
+  const currentBase: ValidBaseImage | null = props.isCameraActive && videoRef.value
+    ? videoRef.value
+    : baseImage.value;
+
+  if (!currentBase) throw new Error('No base image to export');
+
+  const naturalW = 'videoWidth' in currentBase ? currentBase.videoWidth : currentBase.naturalWidth;
+  const naturalH = 'videoHeight' in currentBase ? currentBase.videoHeight : currentBase.naturalHeight;
 
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = naturalW || 1920;

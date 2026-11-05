@@ -136,6 +136,12 @@ export const useProjectStore = defineStore('project', () => {
 
   async function saveProject() {
     const p = currentProject.value;
+    const projectId = p.id || ('local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+    p.id = projectId;
+    if (!p.id) {
+      p.id = 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    }
+
     const payload = {
       title: p.title,
       cornerPoints: p.cornerPoints,
@@ -145,35 +151,48 @@ export const useProjectStore = defineStore('project', () => {
       contrast: p.contrast
     };
 
+    let savedRemote = false;
     try {
-      if (p.id) {
-        await apiRequest(`/projects/${p.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload)
-        });
-      } else {
+      if (p.id.startsWith('local_')) {
         const created = await apiRequest('/projects', {
           method: 'POST',
           body: JSON.stringify(payload)
         });
         p.id = created.id;
-      }
-      p.isDirty = false;
-    } catch {
-      if (p.id) {
-        await db.projects.put({
-          id: p.id,
-          title: p.title,
-          cornerPoints: p.cornerPoints,
-          blendMode: p.blendMode,
-          opacity: p.opacity,
-          brightness: p.brightness,
-          contrast: p.contrast,
-          synced: false,
-          updatedAt: Date.now()
+      } else {
+        await apiRequest(`/projects/${p.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
         });
       }
+      savedRemote = true;
+    } catch {
+      savedRemote = false;
     }
+
+    let maskData: string | null = null;
+    if (p.maskCanvas) {
+      try {
+        maskData = p.maskCanvas.toDataURL();
+      } catch {}
+    }
+
+    await db.projects.put({
+      id: projectId,
+      title: p.title,
+      basePhotoUrl: p.basePhotoUrl,
+      artAssetUrl: p.artAssetUrl,
+      maskCanvasData: maskData,
+      cornerPoints: p.cornerPoints,
+      blendMode: p.blendMode,
+      opacity: p.opacity,
+      brightness: p.brightness,
+      contrast: p.contrast,
+      synced: savedRemote,
+      updatedAt: Date.now()
+    });
+
+    p.isDirty = false;
   }
 
   async function loadProject(id: string) {
@@ -197,23 +216,39 @@ export const useProjectStore = defineStore('project', () => {
         contrast: p.contrast ?? 1.0,
         isDirty: false
       };
-    } catch {
-      const offlineP = await db.projects.get(id);
-      if (offlineP) {
-        currentProject.value = {
-          id: offlineP.id,
-          title: offlineP.title,
-          basePhotoUrl: null,
-          artAssetUrl: null,
-          maskCanvas: null,
-          cornerPoints: offlineP.cornerPoints as any,
-          blendMode: offlineP.blendMode as any,
-          opacity: offlineP.opacity,
-          brightness: offlineP.brightness,
-          contrast: offlineP.contrast,
-          isDirty: false
-        };
+      return;
+    } catch {}
+
+    const offlineP = await db.projects.get(id);
+    if (offlineP) {
+      let maskCanvasElement: HTMLCanvasElement | null = null;
+      if (offlineP.maskCanvasData) {
+        const img = new Image();
+        img.src = offlineP.maskCanvasData;
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+        maskCanvasElement = document.createElement('canvas');
+        maskCanvasElement.width = img.naturalWidth || 800;
+        maskCanvasElement.height = img.naturalHeight || 600;
+        const ctx = maskCanvasElement.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0);
       }
+
+      currentProject.value = {
+        id: offlineP.id,
+        title: offlineP.title,
+        basePhotoUrl: offlineP.basePhotoUrl || null,
+        artAssetUrl: offlineP.artAssetUrl || null,
+        maskCanvas: maskCanvasElement,
+        cornerPoints: offlineP.cornerPoints as any,
+        blendMode: offlineP.blendMode as any,
+        opacity: offlineP.opacity,
+        brightness: offlineP.brightness,
+        contrast: offlineP.contrast,
+        isDirty: false
+      };
     }
   }
 
