@@ -1,21 +1,24 @@
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-2 sm:p-4 select-none"
+    class="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-2 sm:p-4 select-none"
   >
-    <div class="bg-asphalt-900 border-2 border-asphalt-700 rounded-sm shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden">
+    <div class="bg-concrete-800 border-2 border-concrete-600 rounded-xs shadow-brutalist max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden">
       <!-- Modal Header -->
-      <div class="h-12 bg-asphalt-950 border-b-2 border-asphalt-700 px-4 flex items-center justify-between shrink-0">
+      <div class="h-12 bg-concrete-900 border-b-2 border-paint px-4 flex items-center justify-between shrink-0">
         <div class="flex items-center space-x-2">
-          <span class="px-2 py-0.5 bg-spray-pink text-white font-mono text-xs font-bold uppercase rounded-sm">
+          <span class="w-1.5 h-3.5 bg-paint"></span>
+          <span class="px-1.5 py-0.5 bg-paint text-paint-dark font-mono text-[11px] font-bold uppercase rounded-xs">
             EDITAR ARTE
           </span>
-          <h3 class="text-sm font-display font-black text-white uppercase tracking-wider">
-            Recortar & Transformar
+          <h3 class="text-sm font-display font-black text-paper uppercase tracking-wider">
+            Recortar e Transformar
           </h3>
         </div>
         <button
-          class="p-1.5 text-slate-400 hover:text-white rounded-sm hover:bg-asphalt-800 transition-colors"
+          type="button"
+          class="p-1.5 text-concrete-300 hover:text-paper rounded-xs hover:bg-concrete-700 transition-colors"
+          aria-label="Fechar editor de imagem"
           @click="$emit('close')"
         >
           <XIcon class="w-4 h-4" />
@@ -23,28 +26,31 @@
       </div>
 
       <!-- Controls Bar -->
-      <div class="bg-asphalt-800/80 border-b border-asphalt-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div class="bg-concrete-800 border-b border-concrete-600 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <!-- Rotate & Flip -->
         <div class="flex items-center space-x-1 sm:space-x-2">
           <button
-            class="px-2.5 py-1.5 bg-asphalt-900 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center space-x-1"
+            type="button"
+            class="px-2.5 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center space-x-1 transition-colors"
             title="Girar 90° Esquerda"
             @click="rotateCounterClockwise"
           >
-            <RotateCcwIcon class="w-3.5 h-3.5 text-spray-pink" />
+            <RotateCcwIcon class="w-3.5 h-3.5 text-paint" />
             <span class="hidden sm:inline">-90°</span>
           </button>
           <button
-            class="px-2.5 py-1.5 bg-asphalt-900 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center space-x-1"
+            type="button"
+            class="px-2.5 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center space-x-1 transition-colors"
             title="Girar 90° Direita"
             @click="rotateClockwise"
           >
-            <RotateCwIcon class="w-3.5 h-3.5 text-spray-volt" />
+            <RotateCwIcon class="w-3.5 h-3.5 text-paint" />
             <span class="hidden sm:inline">+90°</span>
           </button>
           <button
-            class="px-2.5 py-1.5 bg-asphalt-900 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center space-x-1"
-            :class="flipH ? 'bg-spray-pink/20 border-spray-pink text-white' : ''"
+            type="button"
+            class="px-2.5 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center space-x-1 transition-colors"
+            :class="flipH ? 'bg-concrete-600 border-paint text-paint' : ''"
             title="Espelhar Horizontal"
             @click="flipH = !flipH; drawPreview()"
           >
@@ -52,8 +58,9 @@
             <span class="hidden sm:inline">Espelhar H</span>
           </button>
           <button
-            class="px-2.5 py-1.5 bg-asphalt-900 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center space-x-1"
-            :class="flipV ? 'bg-spray-pink/20 border-spray-pink text-white' : ''"
+            type="button"
+            class="px-2.5 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center space-x-1 transition-colors"
+            :class="flipV ? 'bg-concrete-600 border-paint text-paint' : ''"
             title="Espelhar Vertical"
             @click="flipV = !flipV; drawPreview()"
           >
@@ -64,12 +71,13 @@
 
         <!-- Crop Aspect Ratio -->
         <div class="flex items-center space-x-1">
-          <span class="text-[11px] font-mono text-slate-400 mr-1 hidden md:inline">Corte:</span>
+          <span class="text-[11px] font-mono text-concrete-300 mr-1 hidden md:inline">Corte:</span>
           <button
             v-for="aspect in aspectOptions"
             :key="aspect.id"
-            class="px-2 py-1 text-xs font-mono font-bold rounded-sm border transition-colors"
-            :class="selectedAspect === aspect.id ? 'bg-spray-volt text-asphalt-950 border-spray-volt' : 'bg-asphalt-900 border-asphalt-700 text-slate-300 hover:bg-asphalt-700'"
+            type="button"
+            class="px-2 py-1 text-xs font-mono font-bold rounded-xs border transition-colors"
+            :class="selectedAspect === aspect.id ? 'bg-paint text-paint-dark border-paint' : 'bg-concrete-700 border-concrete-600 text-concrete-300 hover:bg-concrete-600 hover:text-paper'"
             @click="changeAspectRatio(aspect.id)"
           >
             {{ aspect.label }}
@@ -80,18 +88,18 @@
       <!-- Preview Canvas & Interactive Crop Overlay -->
       <div
         ref="previewContainerRef"
-        class="flex-1 bg-[#050608] overflow-hidden relative flex items-center justify-center p-4 min-h-[260px]"
+        class="flex-1 bg-concrete-950 overflow-hidden relative flex items-center justify-center p-4 min-h-[260px]"
       >
         <div
           ref="cropWrapperRef"
-          class="relative shadow-2xl select-none"
+          class="relative select-none shadow-md"
           :style="{ width: `${stageWidth}px`, height: `${stageHeight}px` }"
         >
           <canvas
             ref="previewCanvasRef"
             :width="stageWidth"
             :height="stageHeight"
-            class="block w-full h-full pointer-events-none rounded-sm"
+            class="block w-full h-full pointer-events-none rounded-xs"
           ></canvas>
 
           <!-- Dimmer Outside Crop Box -->
@@ -108,12 +116,12 @@
                 />
               </mask>
             </defs>
-            <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.65)" mask="url(#cropMask)" />
+            <rect width="100%" height="100%" fill="rgba(15, 14, 13, 0.72)" mask="url(#cropMask)" />
           </svg>
 
           <!-- Interactive Crop Box -->
           <div
-            class="absolute border-2 border-spray-volt z-20 cursor-move shadow-spray-volt"
+            class="absolute border border-paint z-20 cursor-move"
             :style="{
               left: `${cropRect.x}px`,
               top: `${cropRect.y}px`,
@@ -124,36 +132,32 @@
           >
             <!-- Rule-of-thirds grid -->
             <div class="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
-              <div class="border-r border-b border-spray-volt/40"></div>
-              <div class="border-r border-b border-spray-volt/40"></div>
-              <div class="border-b border-spray-volt/40"></div>
-              <div class="border-r border-b border-spray-volt/40"></div>
-              <div class="border-r border-b border-spray-volt/40"></div>
-              <div class="border-b border-spray-volt/40"></div>
-              <div class="border-r border-spray-volt/40"></div>
-              <div class="border-r border-spray-volt/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
+              <div class="border-b border-paint/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
+              <div class="border-b border-paint/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
+              <div class="border-r border-b border-paint/40"></div>
               <div></div>
             </div>
 
-            <!-- Resize Handles -->
-            <!-- Top Left -->
+            <!-- Resize Handles (Paper squares with dark border) -->
             <div
-              class="absolute -top-2 -left-2 w-4 h-4 bg-spray-volt border-2 border-asphalt-950 rounded-xs cursor-nwse-resize z-30"
+              class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-paper border border-paint-dark rounded-xs cursor-nwse-resize z-30"
               @pointerdown.stop="(e) => startResize('tl', e)"
             ></div>
-            <!-- Top Right -->
             <div
-              class="absolute -top-2 -right-2 w-4 h-4 bg-spray-volt border-2 border-asphalt-950 rounded-xs cursor-nesw-resize z-30"
+              class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-paper border border-paint-dark rounded-xs cursor-nesw-resize z-30"
               @pointerdown.stop="(e) => startResize('tr', e)"
             ></div>
-            <!-- Bottom Right -->
             <div
-              class="absolute -bottom-2 -right-2 w-4 h-4 bg-spray-volt border-2 border-asphalt-950 rounded-xs cursor-nwse-resize z-30"
+              class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-paper border border-paint-dark rounded-xs cursor-nwse-resize z-30"
               @pointerdown.stop="(e) => startResize('br', e)"
             ></div>
-            <!-- Bottom Left -->
             <div
-              class="absolute -bottom-2 -left-2 w-4 h-4 bg-spray-volt border-2 border-asphalt-950 rounded-xs cursor-nesw-resize z-30"
+              class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-paper border border-paint-dark rounded-xs cursor-nesw-resize z-30"
               @pointerdown.stop="(e) => startResize('bl', e)"
             ></div>
           </div>
@@ -161,9 +165,10 @@
       </div>
 
       <!-- Footer Actions -->
-      <div class="h-14 bg-asphalt-950 border-t-2 border-asphalt-700 px-4 flex items-center justify-between shrink-0">
+      <div class="h-14 bg-concrete-900 border-t-2 border-concrete-600 px-4 flex items-center justify-between shrink-0">
         <button
-          class="px-3 py-1.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-slate-300 transition-colors"
+          type="button"
+          class="px-3 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-concrete-300 hover:text-paper transition-colors"
           @click="resetAll"
         >
           Resetar
@@ -171,16 +176,18 @@
 
         <div class="flex items-center space-x-2">
           <button
-            class="px-4 py-1.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-white transition-colors"
+            type="button"
+            class="px-4 py-1.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper transition-colors"
             @click="$emit('close')"
           >
             Cancelar
           </button>
           <button
-            class="px-5 py-1.5 bg-spray-volt hover:bg-spray-voltHover border border-spray-volt text-asphalt-950 rounded-sm text-xs font-mono font-black uppercase tracking-wider shadow-spray-volt transition-transform active:scale-95 flex items-center space-x-1.5"
+            type="button"
+            class="px-5 py-1.5 bg-paint hover:bg-paint-hover border border-paint text-paint-dark rounded-xs text-xs font-mono font-black uppercase tracking-wider transition-colors flex items-center space-x-1.5 shadow-subtle"
             @click="applyAndSave"
           >
-            <CheckIcon class="w-4 h-4 stroke-[3]" />
+            <CheckIcon class="w-4 h-4 stroke-[2.5]" />
             <span>Aplicar Recorte</span>
           </button>
         </div>
@@ -216,7 +223,7 @@ const cropWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sourceImage = ref<HTMLImageElement | null>(null);
 
-const rotation = ref(0); // 0, 90, 180, 270
+const rotation = ref(0);
 const flipH = ref(false);
 const flipV = ref(false);
 
@@ -483,7 +490,6 @@ function applyAndSave() {
   const transformedW = isRotated90 ? sourceImage.value.naturalHeight : sourceImage.value.naturalWidth;
   const transformedH = isRotated90 ? sourceImage.value.naturalWidth : sourceImage.value.naturalHeight;
 
-  // Render transformed full-resolution image
   const fullCanvas = document.createElement('canvas');
   fullCanvas.width = transformedW;
   fullCanvas.height = transformedH;
@@ -501,7 +507,6 @@ function applyAndSave() {
   fullCtx.drawImage(sourceImage.value, -drawW / 2, -drawH / 2, drawW, drawH);
   fullCtx.restore();
 
-  // Map preview crop coordinates to full resolution coordinates
   const scaleX = transformedW / stageWidth.value;
   const scaleY = transformedH / stageHeight.value;
 

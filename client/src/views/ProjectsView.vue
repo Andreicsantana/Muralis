@@ -1,81 +1,84 @@
 <template>
-  <div class="h-full bg-asphalt-950 flex flex-col overflow-y-auto">
-    <!-- Street Header -->
-    <header class="h-16 bg-asphalt-900 border-b-2 border-asphalt-700 flex items-center justify-between px-6 lg:px-10 z-10">
+  <div class="h-full bg-concrete-900 text-paper flex flex-col overflow-y-auto select-none">
+    <!-- Header with 2px accent bottom border -->
+    <header class="h-16 bg-concrete-800 border-b-2 border-paint flex items-center justify-between px-4 sm:px-8 lg:px-10 z-10 shrink-0">
       <div class="flex items-center space-x-3">
-        <div class="px-2.5 py-1 bg-spray-pink text-white font-tag text-lg tracking-wider rounded-sm shadow-spray-pink transform -rotate-1">
-          M
-        </div>
+        <span class="w-2 h-7 bg-paint"></span>
         <div>
-          <h1 class="font-display font-black text-lg text-white tracking-tight uppercase">MURALIS</h1>
-          <span class="text-[10px] text-spray-volt font-mono font-bold tracking-widest uppercase block -mt-1">
-            // STREET LAB
+          <h1 class="font-display font-black text-2xl text-paper tracking-wider uppercase leading-none">
+            MURALIS
+          </h1>
+          <span class="text-[10px] text-paint font-mono font-bold tracking-widest uppercase block mt-0.5">
+            GALERIA DE FACHADAS
           </span>
         </div>
       </div>
 
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-3 sm:space-x-4">
         <button
-          class="py-2 px-4 bg-spray-volt hover:bg-spray-voltHover text-asphalt-950 text-xs font-black uppercase tracking-wider rounded-sm flex items-center space-x-2 transition-all shadow-spray-volt active:scale-95"
+          type="button"
+          class="py-2 px-3 sm:px-4 bg-paint hover:bg-paint-hover text-paint-dark text-xs font-mono font-black uppercase tracking-wider rounded-xs flex items-center space-x-1.5 transition-colors shadow-subtle active:scale-[0.98]"
           @click="createNewProject"
         >
-          <PlusIcon class="w-4 h-4 stroke-[3]" />
-          <span>Novo Muro / Projeto</span>
+          <PlusIcon class="w-4 h-4 stroke-[2.5]" />
+          <span>Novo Projeto</span>
         </button>
 
         <button
           v-if="authStore.isAuthenticated"
-          class="text-xs font-mono text-slate-400 hover:text-spray-pink transition-colors uppercase tracking-wider"
+          type="button"
+          class="text-xs font-mono text-concrete-300 hover:text-paper transition-colors uppercase tracking-wider"
           @click="authStore.clearAuth(); $router.push('/login')"
         >
-          [ Sair ]
+          Sair
         </button>
       </div>
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-6xl w-full mx-auto p-6 lg:p-10 space-y-8 flex-1">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-asphalt-800 pb-6">
+    <main class="max-w-6xl w-full mx-auto p-4 sm:p-8 lg:p-10 space-y-6 flex-1">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-concrete-600 pb-5">
         <div>
-          <span class="text-xs font-mono font-bold uppercase tracking-widest text-spray-pink">
-            GALERIA DE SIMULAÇÕES
-          </span>
-          <h2 class="text-2xl lg:text-3xl font-display font-black text-white tracking-tight uppercase mt-1">
-            Muros & Fachadas
+          <div class="text-xs font-mono font-bold uppercase tracking-widest text-paint flex items-center">
+            <span class="mr-1">PROJETOS</span>
+          </div>
+          <h2 class="text-2xl lg:text-3xl font-display font-black text-paper tracking-tight uppercase mt-1">
+            Simulações de Murais
           </h2>
-          <p class="text-xs font-mono text-slate-400 mt-1">
-            Gerencie seus murais salvos localmente ou na nuvem.
+          <p class="text-xs font-mono text-concrete-300 mt-1">
+            Projetos salvos no dispositivo e sincronizados na nuvem.
           </p>
         </div>
 
-        <div class="flex items-center space-x-2 text-xs font-mono text-slate-400 bg-asphalt-900 border border-asphalt-800 px-3 py-1.5 rounded-sm self-start md:self-auto">
-          <span class="w-2 h-2 rounded-full bg-spray-volt animate-pulse"></span>
-          <span>{{ projects.length }} Mural(is) Registrado(s)</span>
+        <div class="flex items-center space-x-2 text-xs font-mono text-concrete-300 bg-concrete-800 border border-concrete-600 px-3 py-1.5 rounded-xs self-start md:self-auto">
+          <span class="w-2 h-2 rounded-full bg-paint"></span>
+          <span>{{ projects.length }} Projeto(s)</span>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-20 text-slate-400 font-mono text-xs animate-pulse">
-        [ CARREGANDO GALERIA DE MUROS... ]
+      <div v-if="loading" class="text-center py-20 text-concrete-300 font-mono text-xs">
+        Carregando galeria...
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="projects.length === 0" class="border-2 border-dashed border-asphalt-700 bg-asphalt-900/40 p-12 text-center space-y-4 rounded-sm">
-        <div class="w-16 h-16 bg-asphalt-800 border border-asphalt-700 mx-auto flex items-center justify-center text-spray-pink shadow-spray-pink transform rotate-3">
-          <FolderPlusIcon class="w-8 h-8" />
+      <div v-else-if="projects.length === 0" class="border-2 border-dashed border-concrete-600 bg-concrete-800/40 p-12 text-center space-y-4 rounded-xs">
+        <div class="w-14 h-14 bg-concrete-700 border border-concrete-600 mx-auto flex items-center justify-center text-paper rounded-xs">
+          <FolderPlusIcon class="w-7 h-7" />
         </div>
-        <h3 class="text-base font-display font-black text-white uppercase tracking-wide">
-          Nenhum mural simulado ainda
+        <h3 class="text-base font-display font-black text-paper uppercase tracking-wide">
+          Nenhum mural registrado
         </h3>
-        <p class="text-xs font-mono text-slate-400 max-w-md mx-auto leading-relaxed">
-          Suba a foto de uma fachada ou aponte a câmera ao vivo para projetar suas ilustrações, pixações e murais com cálculo real de perspectiva.
+        <p class="text-xs font-mono text-concrete-300 max-w-md mx-auto leading-relaxed">
+          Carregue a foto de uma parede ou aponte a câmera ao vivo para projetar artes com perspectiva realista.
         </p>
         <button
-          class="py-2.5 px-5 bg-spray-pink hover:bg-spray-pinkHover text-white text-xs font-black uppercase tracking-wider rounded-sm inline-flex items-center space-x-2 shadow-spray-pink transition-all active:scale-95"
+          type="button"
+          class="py-2.5 px-5 bg-paint hover:bg-paint-hover text-paint-dark text-xs font-mono font-black uppercase tracking-wider rounded-xs inline-flex items-center space-x-2 transition-colors shadow-subtle active:scale-[0.98]"
           @click="createNewProject"
         >
-          <PlusIcon class="w-4 h-4 stroke-[3]" />
-          <span>Iniciar Primeira Simulação</span>
+          <PlusIcon class="w-4 h-4 stroke-[2.5]" />
+          <span>Iniciar Simulação</span>
         </button>
       </div>
 
@@ -84,25 +87,25 @@
         <div
           v-for="proj in projects"
           :key="proj.id"
-          class="bg-asphalt-900 border-2 border-asphalt-700 hover:border-spray-pink transition-all flex flex-col group cursor-pointer shadow-lg hover:shadow-spray-pink relative"
+          class="bg-concrete-800 border-2 border-concrete-600 hover:border-paint transition-colors flex flex-col group cursor-pointer shadow-subtle rounded-xs relative"
           @click="$router.push(`/editor/${proj.id}`)"
         >
-          <!-- Preview Box with Street Wall Placeholder -->
-          <div class="h-48 bg-asphalt-950 flex items-center justify-center relative overflow-hidden border-b border-asphalt-800">
-            <!-- Street Tag Badge -->
-            <div class="absolute top-3 left-3 px-2 py-0.5 bg-asphalt-900/90 border border-asphalt-700 text-[10px] font-mono text-spray-volt font-semibold tracking-wider uppercase z-10">
+          <!-- Preview Box -->
+          <div class="h-48 bg-concrete-950 flex items-center justify-center relative overflow-hidden border-b border-concrete-600">
+            <!-- Mode badge -->
+            <div class="absolute top-3 left-3 px-2 py-0.5 bg-concrete-900 border border-concrete-600 text-[10px] font-mono text-concrete-200 font-semibold tracking-wider uppercase z-10 rounded-xs">
               {{ (proj.blendMode || 'multiply').toUpperCase() }}
             </div>
 
-            <!-- Preview thumbnail if available -->
+            <!-- Preview thumbnail -->
             <img
               v-if="proj.basePhotoUrl"
               :src="proj.basePhotoUrl"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              alt="Mural preview"
+              class="w-full h-full object-cover"
+              alt="Pré-visualização do mural"
             />
-            <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-b from-asphalt-900/30 to-asphalt-950 group-hover:scale-105 transition-transform duration-300">
-              <span class="font-tag text-slate-700 group-hover:text-spray-pink/40 transition-colors text-2xl tracking-widest uppercase">
+            <div v-else class="w-full h-full flex items-center justify-center bg-concrete-900">
+              <span class="font-display font-black text-concrete-500 text-3xl tracking-widest uppercase">
                 MURAL
               </span>
             </div>
@@ -111,17 +114,19 @@
           <!-- Info Footer -->
           <div class="p-4 flex items-center justify-between">
             <div class="min-w-0 flex-1 pr-2">
-              <h4 class="text-sm font-display font-bold text-white group-hover:text-spray-pink transition-colors truncate uppercase">
+              <h4 class="text-sm font-display font-bold text-paper group-hover:text-paint transition-colors truncate uppercase">
                 {{ proj.title || 'Mural Sem Título' }}
               </h4>
-              <span class="text-[11px] font-mono text-slate-500 block mt-0.5">
-                Atualizado: {{ new Date(proj.updatedAt || Date.now()).toLocaleDateString('pt-BR') }}
+              <span class="text-[11px] font-mono text-concrete-400 block mt-0.5">
+                {{ new Date(proj.updatedAt || Date.now()).toLocaleDateString('pt-BR') }}
               </span>
             </div>
 
             <button
-              class="p-2 rounded-sm hover:bg-rose-950/60 text-slate-500 hover:text-rose-400 transition-colors border border-transparent hover:border-rose-700/50"
-              title="Excluir Mural"
+              type="button"
+              class="p-2 rounded-xs text-concrete-400 hover:text-paper hover:bg-danger/20 transition-colors border border-transparent hover:border-danger-border"
+              aria-label="Excluir projeto"
+              title="Excluir Projeto"
               @click.stop="deleteProject(proj.id)"
             >
               <Trash2Icon class="w-4 h-4" />
@@ -168,7 +173,7 @@ async function createNewProject() {
 }
 
 async function deleteProject(id: string) {
-  if (!confirm('Tem certeza que deseja apagar esta simulação de mural?')) return;
+  if (!confirm('Deseja excluir esta simulação?')) return;
 
   try {
     await apiRequest(`/projects/${id}`, { method: 'DELETE' });

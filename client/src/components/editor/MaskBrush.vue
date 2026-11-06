@@ -1,10 +1,10 @@
 <template>
   <div
     ref="maskContainerRef"
-    class="absolute inset-0 z-20 cursor-crosshair touch-none"
+    class="absolute inset-0 z-20 cursor-crosshair touch-none overflow-hidden"
     @pointerdown="handlePointerDown"
   >
-    <canvas ref="maskCanvasRef" class="w-full h-full pointer-events-none"></canvas>
+    <canvas ref="maskCanvasRef" class="w-full h-full pointer-events-none block"></canvas>
   </div>
 </template>
 
@@ -14,6 +14,7 @@ import { ref, onMounted, watch } from 'vue';
 const props = defineProps<{
   brushSize: number;
   isEraser: boolean;
+  canvasBounds: { width: number; height: number };
 }>();
 
 const emit = defineEmits<{
@@ -22,75 +23,144 @@ const emit = defineEmits<{
 
 const maskContainerRef = ref<HTMLDivElement | null>(null);
 const maskCanvasRef = ref<HTMLCanvasElement | null>(null);
+
+// Master high-resolution normalized canvas (2048x2048)
+const MASTER_RES = 2048;
+let masterCanvas: HTMLCanvasElement | null = null;
+let masterCtx: CanvasRenderingContext2D | null = null;
 let isDrawing = false;
 
-function resizeMaskCanvas() {
-  if (!maskContainerRef.value || !maskCanvasRef.value) return;
-  const rect = maskContainerRef.value.getBoundingClientRect();
-
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = maskCanvasRef.value.width;
-  tempCanvas.height = maskCanvasRef.value.height;
-  const tempCtx = tempCanvas.getContext('2d');
-  if (tempCtx && maskCanvasRef.value.width > 0) {
-    tempCtx.drawImage(maskCanvasRef.value, 0, 0);
-  }
-
-  maskCanvasRef.value.width = rect.width;
-  maskCanvasRef.value.height = rect.height;
-
-  const ctx = maskCanvasRef.value.getContext('2d');
-  if (ctx && tempCanvas.width > 0) {
-    ctx.drawImage(tempCanvas, 0, 0, rect.width, rect.height);
+function initMasterCanvas() {
+  if (!masterCanvas) {
+    masterCanvas = document.createElement('canvas');
+    masterCanvas.width = MASTER_RES;
+    masterCanvas.height = MASTER_RES;
+    masterCtx = masterCanvas.getContext('2d');
   }
 }
 
-function handlePointerDown(e: PointerEvent) {
-  if (!maskCanvasRef.value) return;
-  const ctx = maskCanvasRef.value.getContext('2d');
+function syncDisplayCanvas() {
+  if (!maskCanvasRef.value || !masterCanvas) return;
+  const { width, height } = props.canvasBounds;
+  if (width <= 0 || height <= 0) return;
+
+  const displayCanvas = maskCanvasRef.value;
+  displayCanvas.width = width;
+  displayCanvas.height = height;
+
+  const ctx = displayCanvas.getContext('2d');
   if (!ctx) return;
 
+  ctx.clearRect(0, 0, width, height);
+  // Redraw from master without displacement or loss
+  ctx.drawImage(masterCanvas, 0, 0, width, height);
+}
+
+function handlePointerDown(e: PointerEvent) {
+  if (!maskCanvasRef.value || !masterCanvas || !masterCtx) return;
+  const displayCanvas = maskCanvasRef.value;
+  const displayCtx = displayCanvas.getContext('2d');
+  if (!displayCtx) return;
+
+  const { width, height } = props.canvasBounds;
+  if (width <= 0 || height <= 0) return;
+
+  const rect = displayCanvas.getBoundingClientRect();
+  const startX = e.clientX - rect.left;
+  const startY = e.clientY - rect.top;
+
   isDrawing = true;
-  const rect = maskCanvasRef.value.getBoundingClientRect();
-  let lastX = e.clientX - rect.left;
-  let lastY = e.clientY - rect.top;
+  try {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  } catch {}
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = props.brushSize;
+  const scaleToMaster = MASTER_RES / width;
+  const masterBrushRadius = (props.brushSize / 2) * scaleToMaster;
 
+  // Configure master context
+  masterCtx.lineCap = 'round';
+  masterCtx.lineJoin = 'round';
+  masterCtx.lineWidth = props.brushSize * scaleToMaster;
   if (props.isEraser) {
-    ctx.globalCompositeOperation = 'destination-out';
+    masterCtx.globalCompositeOperation = 'destination-out';
   } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+    masterCtx.globalCompositeOperation = 'source-over';
+    masterCtx.fillStyle = '#000000';
+    masterCtx.strokeStyle = '#000000';
   }
 
-  ctx.beginPath();
-  ctx.arc(lastX, lastY, props.brushSize / 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Configure display context
+  displayCtx.lineCap = 'round';
+  displayCtx.lineJoin = 'round';
+  displayCtx.lineWidth = props.brushSize;
+  if (props.isEraser) {
+    displayCtx.globalCompositeOperation = 'destination-out';
+  } else {
+    displayCtx.globalCompositeOperation = 'source-over';
+    displayCtx.fillStyle = '#000000';
+    displayCtx.strokeStyle = '#000000';
+  }
+
+  // Draw initial spot
+  const normX = startX / width;
+  const normY = startY / height;
+  const masterX = normX * MASTER_RES;
+  const masterY = normY * MASTER_RES;
+
+  masterCtx.beginPath();
+  masterCtx.arc(masterX, masterY, masterBrushRadius, 0, Math.PI * 2);
+  masterCtx.fill();
+
+  displayCtx.beginPath();
+  displayCtx.arc(startX, startY, props.brushSize / 2, 0, Math.PI * 2);
+  displayCtx.fill();
+
+  let lastX = startX;
+  let lastY = startY;
+  let lastMasterX = masterX;
+  let lastMasterY = masterY;
 
   const onPointerMove = (moveEvent: PointerEvent) => {
-    if (!isDrawing || !ctx || !maskCanvasRef.value) return;
-    const currentX = moveEvent.clientX - rect.left;
-    const currentY = moveEvent.clientY - rect.top;
+    if (!isDrawing || !masterCtx || !displayCtx) return;
+    const curX = moveEvent.clientX - rect.left;
+    const curY = moveEvent.clientY - rect.top;
 
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
+    const curNormX = curX / width;
+    const curNormY = curY / height;
+    const curMasterX = curNormX * MASTER_RES;
+    const curMasterY = curNormY * MASTER_RES;
 
-    lastX = currentX;
-    lastY = currentY;
-    emit('maskUpdated', maskCanvasRef.value);
+    // Stroke master
+    masterCtx.beginPath();
+    masterCtx.moveTo(lastMasterX, lastMasterY);
+    masterCtx.lineTo(curMasterX, curMasterY);
+    masterCtx.stroke();
+
+    // Stroke display
+    displayCtx.beginPath();
+    displayCtx.moveTo(lastX, lastY);
+    displayCtx.lineTo(curX, curY);
+    displayCtx.stroke();
+
+    lastX = curX;
+    lastY = curY;
+    lastMasterX = curMasterX;
+    lastMasterY = curMasterY;
+
+    if (masterCanvas) {
+      emit('maskUpdated', masterCanvas);
+    }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (upEvent: PointerEvent) => {
     isDrawing = false;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(upEvent.pointerId);
+    } catch {}
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
-    if (maskCanvasRef.value) {
-      emit('maskUpdated', maskCanvasRef.value);
+    if (masterCanvas) {
+      emit('maskUpdated', masterCanvas);
     }
   };
 
@@ -99,22 +169,36 @@ function handlePointerDown(e: PointerEvent) {
 }
 
 function clearMask() {
-  if (!maskCanvasRef.value) return;
-  const ctx = maskCanvasRef.value.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, maskCanvasRef.value.width, maskCanvasRef.value.height);
-    emit('maskUpdated', maskCanvasRef.value);
+  if (masterCanvas && masterCtx) {
+    masterCtx.clearRect(0, 0, masterCanvas.width, masterCanvas.height);
+  }
+  if (maskCanvasRef.value) {
+    const ctx = maskCanvasRef.value.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, maskCanvasRef.value.width, maskCanvasRef.value.height);
+    }
+  }
+  if (masterCanvas) {
+    emit('maskUpdated', masterCanvas);
   }
 }
 
 defineExpose({
   clearMask,
+  getMasterCanvas: () => masterCanvas,
   getCanvas: () => maskCanvasRef.value
 });
 
 onMounted(() => {
-  resizeMaskCanvas();
+  initMasterCanvas();
+  syncDisplayCanvas();
 });
 
-watch([() => props.brushSize, () => props.isEraser], () => {});
+watch(
+  () => props.canvasBounds,
+  () => {
+    syncDisplayCanvas();
+  },
+  { deep: true }
+);
 </script>

@@ -1,37 +1,31 @@
 <template>
-  <aside class="w-full md:w-80 bg-asphalt-900 border-t-2 md:border-t-0 md:border-l-2 border-asphalt-700 flex flex-col h-full overflow-y-auto text-sm select-none pb-20 md:pb-0">
-    <!-- Mobile Drawer Drag Handle -->
-    <div class="md:hidden w-12 h-1.5 bg-asphalt-600 rounded-full mx-auto my-2 shrink-0"></div>
-
-    <!-- Header: Toolbox HUD -->
-    <div class="p-3 md:p-4 border-b-2 border-asphalt-700 flex items-center justify-between bg-asphalt-950/60 sticky top-0 z-20">
+  <aside class="w-full md:w-80 bg-concrete-800 border-t-2 md:border-t-0 md:border-l-2 border-concrete-600 flex flex-col h-full overflow-y-auto text-sm select-none pb-12 md:pb-4">
+    <!-- Header: Toolbox -->
+    <div class="p-3 md:p-4 border-b-2 border-concrete-600 flex items-center justify-between bg-concrete-900 sticky top-0 z-20">
       <div>
-        <span class="text-[10px] font-mono text-spray-pink font-bold uppercase tracking-widest block">
-          // CONTROLES DE RUA
+        <span class="text-[10px] font-mono text-paint font-bold uppercase tracking-wider block">
+          PAINEL DE CONTROLE
         </span>
-        <h2 class="font-display font-black text-white text-base tracking-tight uppercase">Painel de Ajustes</h2>
+        <h2 class="font-display font-black text-paper text-lg tracking-tight uppercase">Ajustes</h2>
       </div>
 
       <div class="flex items-center space-x-1.5">
         <button
-          class="md:hidden p-2 rounded-sm bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 text-slate-300 hover:text-white mr-1"
-          title="Fechar Painel"
-          @click="$emit('closeMobile')"
-        >
-          <XIcon class="w-3.5 h-3.5 text-spray-pink" />
-        </button>
-        <button
-          class="p-2 rounded-sm bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 text-slate-300 hover:text-white disabled:opacity-25 transition-all"
+          type="button"
+          class="p-2 rounded-xs bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 text-concrete-300 hover:text-paper disabled:opacity-25 transition-all"
           :disabled="!canUndo"
+          aria-label="Desfazer"
           title="Desfazer (Ctrl+Z)"
           @click="$emit('undo')"
         >
           <UndoIcon class="w-3.5 h-3.5" />
         </button>
         <button
-          class="p-2 rounded-sm bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-700 text-slate-300 hover:text-white disabled:opacity-25 transition-all"
+          type="button"
+          class="p-2 rounded-xs bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 text-concrete-300 hover:text-paper disabled:opacity-25 transition-all"
           :disabled="!canRedo"
-          title="Refazer"
+          aria-label="Refazer"
+          title="Refazer (Ctrl+Y)"
           @click="$emit('redo')"
         >
           <RedoIcon class="w-3.5 h-3.5" />
@@ -40,15 +34,16 @@
     </div>
 
     <div class="p-4 space-y-6 flex-1">
-      <!-- Image Uploads -->
+      <!-- 01 Camadas -->
       <div class="space-y-3">
-        <label class="block text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-          [1] Camadas do Mural
-        </label>
+        <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
+          <span class="text-paint mr-1.5 font-black">01</span>
+          <span class="text-paper">Camadas</span>
+        </div>
 
         <!-- Wall Photo Upload -->
         <div>
-          <span class="block text-xs font-mono text-slate-300 mb-1">Muro / Fachada Real</span>
+          <span class="block text-xs font-mono text-concrete-300 mb-1">Muro ou Fachada</span>
           <div class="flex items-center space-x-2">
             <input
               ref="baseFileInputRef"
@@ -58,48 +53,43 @@
               @change="handleBasePhotoUpload"
             />
             <button
-              class="flex-1 py-2 px-3 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-white flex items-center justify-center space-x-1.5 transition-all active:scale-95"
+              type="button"
+              class="flex-1 py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
               @click="baseFileInputRef?.click()"
             >
-              <UploadIcon class="w-3.5 h-3.5 text-spray-pink" />
+              <UploadIcon class="w-3.5 h-3.5 text-paint" />
               <span>Carregar Foto</span>
             </button>
             <button
-              class="py-2 px-2.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono text-slate-300 transition-colors"
-              title="Carregar Muro de Tijolos de Teste"
+              type="button"
+              class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
+              title="Carregar foto de tijolos de exemplo"
               @click="loadSampleBase"
             >
               Exemplo
             </button>
           </div>
-          <!-- Edit / Crop Artwork Button -->
-          <button
-            v-if="hasArt"
-            class="mt-2 w-full py-1.5 px-2.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 hover:border-spray-pink rounded-sm text-xs font-mono font-bold text-slate-200 flex items-center justify-center space-x-2 transition-all active:scale-95"
-            @click="$emit('openImageEditor')"
-          >
-            <CropIcon class="w-3.5 h-3.5 text-spray-pink" />
-            <span>Editar / Cortar Arte</span>
-          </button>
 
           <!-- Live Camera Button -->
           <div class="mt-2 flex items-center space-x-2">
             <button
-              class="flex-1 py-2 px-3 border rounded-sm text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-all shadow-md"
-              :class="isCameraActive ? 'bg-rose-600 hover:bg-rose-500 border-rose-400 text-white animate-pulse' : 'bg-spray-pink hover:bg-spray-pinkHover border-spray-pink text-white shadow-spray-pink'"
+              type="button"
+              class="flex-1 py-2 px-3 border rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-colors"
+              :class="isCameraActive ? 'bg-danger text-paper border-danger-border' : 'bg-paint hover:bg-paint-hover text-paint-dark border-paint'"
               @click="$emit('toggleCamera')"
-              :title="isCameraActive ? 'Desativar Câmera em Tempo Real' : 'Apontar a câmera para o muro em tempo real (RA)'"
+              :title="isCameraActive ? 'Desativar câmera' : 'Apontar a câmera para o muro'"
             >
               <CameraIcon class="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{{ isCameraActive ? 'Desativar Câmera' : 'Câmera ao Vivo / RA' }}</span>
+              <span>{{ isCameraActive ? 'Desativar Câmera' : 'Câmera ao Vivo' }}</span>
             </button>
             <button
               v-if="isCameraActive"
-              class="py-2 px-3 bg-spray-volt hover:bg-spray-voltHover border border-spray-volt rounded-sm text-xs font-mono font-bold text-asphalt-950 flex items-center justify-center space-x-1 transition-all shadow-spray-volt"
-              title="Congelar e Capturar Foto do Muro"
+              type="button"
+              class="py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-500 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1 transition-colors"
+              title="Congelar e salvar foto do muro"
               @click="$emit('captureCamera')"
             >
-              <CheckIcon class="w-3.5 h-3.5 stroke-[3]" />
+              <CheckIcon class="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Capturar</span>
             </button>
           </div>
@@ -107,7 +97,7 @@
 
         <!-- Artwork Upload -->
         <div>
-          <span class="block text-xs font-mono text-slate-300 mb-1">Arte / Pixo / Ilustração</span>
+          <span class="block text-xs font-mono text-concrete-300 mb-1">Arte ou Tipografia</span>
           <div class="flex items-center space-x-2">
             <input
               ref="artFileInputRef"
@@ -117,74 +107,92 @@
               @change="handleArtUpload"
             />
             <button
-              class="flex-1 py-2 px-3 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono font-bold text-white flex items-center justify-center space-x-1.5 transition-all active:scale-95"
+              type="button"
+              class="flex-1 py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
               @click="artFileInputRef?.click()"
             >
-              <UploadIcon class="w-3.5 h-3.5 text-spray-volt" />
+              <UploadIcon class="w-3.5 h-3.5 text-paint" />
               <span>Carregar Arte</span>
             </button>
             <button
-              class="py-2 px-2.5 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 rounded-sm text-xs font-mono text-slate-300 transition-colors"
-              title="Carregar Arte Urbana de Exemplo"
+              type="button"
+              class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
+              title="Carregar arte stencil de exemplo"
               @click="loadSampleArt"
             >
               Exemplo
             </button>
           </div>
+
+          <!-- Edit / Crop Artwork Button -->
+          <button
+            v-if="hasArt"
+            type="button"
+            class="mt-2 w-full py-1.5 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-2 transition-colors"
+            @click="$emit('openImageEditor')"
+          >
+            <CropIcon class="w-3.5 h-3.5 text-paint" />
+            <span>Editar ou Cortar Arte</span>
+          </button>
         </div>
       </div>
 
-      <!-- Perspective & Alignment -->
-      <div class="space-y-3 pt-3 border-t border-asphalt-800">
-        <label class="block text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-          [2] Perspectiva & Encaixe
-        </label>
+      <!-- 02 Perspectiva -->
+      <div class="space-y-3 pt-3 border-t border-concrete-600">
+        <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
+          <span class="text-paint mr-1.5 font-black">02</span>
+          <span class="text-paper">Perspectiva</span>
+        </div>
 
         <button
-          class="w-full py-2.5 px-3 bg-gradient-to-r from-spray-purple via-spray-pink to-spray-yellow text-white rounded-sm text-xs font-black uppercase tracking-wider flex items-center justify-center space-x-2 shadow-spray-pink transition-all hover:scale-[1.02] active:scale-[0.98]"
+          type="button"
+          class="w-full py-2.5 px-3 bg-paint hover:bg-paint-hover text-paint-dark rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors shadow-subtle"
           @click="$emit('autoFit')"
-          title="Detectar perspectiva diagonal e encaixar no muro"
+          title="Detectar alinhamento e ajustar perspectiva"
         >
-          <Wand2Icon class="w-4 h-4 text-white" />
-          <span>Auto-Ajustar ao Muro (IA)</span>
+          <Wand2Icon class="w-4 h-4 text-paint-dark" />
+          <span>Auto-ajustar ao muro</span>
         </button>
 
         <!-- Quick Direction Presets -->
         <div class="space-y-1">
-          <span class="text-[11px] font-mono text-slate-400 uppercase">Direção do Muro:</span>
+          <span class="text-[11px] font-mono text-concrete-300 uppercase">Direção do muro:</span>
           <div class="grid grid-cols-3 gap-1.5">
             <button
-              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              type="button"
+              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
               :class="
                 currentSlope !== null && currentSlope !== undefined && currentSlope < -0.1
-                  ? 'bg-spray-pink border-spray-pink text-white shadow-spray-pink'
-                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-pink text-slate-200'
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
               "
-              title="Muro fugindo para a esquerda (mantém tamanho e posição)"
+              title="Fuga para esquerda"
               @click="$emit('applyPreset', -0.28)"
             >
               <span>◀ Esq.</span>
             </button>
             <button
-              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              type="button"
+              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
               :class="
                 currentSlope !== null && currentSlope !== undefined && Math.abs(currentSlope) <= 0.1
-                  ? 'bg-spray-volt border-spray-volt text-asphalt-950 shadow-spray-volt'
-                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-volt text-slate-200'
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
               "
-              title="Muro visto de frente (mantém tamanho e posição)"
+              title="Muro frontal"
               @click="$emit('applyPreset', 0)"
             >
               <span>Frontal</span>
             </button>
             <button
-              class="py-1.5 px-2 rounded-sm text-xs font-mono font-bold text-center transition-all border"
+              type="button"
+              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
               :class="
                 currentSlope !== null && currentSlope !== undefined && currentSlope > 0.1
-                  ? 'bg-spray-yellow border-spray-yellow text-asphalt-950 shadow-spray-yellow'
-                  : 'bg-asphalt-800 border-asphalt-700 hover:border-spray-yellow text-slate-200'
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
               "
-              title="Muro fugindo para a direita (mantém tamanho e posição)"
+              title="Fuga para direita"
               @click="$emit('applyPreset', 0.28)"
             >
               <span>Dir. ▶</span>
@@ -195,9 +203,9 @@
         <!-- Scale & Position Sliders -->
         <div class="space-y-2.5 pt-1">
           <div class="space-y-1">
-            <div class="flex justify-between text-xs font-mono text-slate-300">
-              <span>Escala da Arte</span>
-              <span class="text-spray-volt font-bold">{{ Math.round(artScale * 100) }}%</span>
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Escala da arte</span>
+              <span class="text-paper font-bold">{{ Math.round(artScale * 100) }}%</span>
             </div>
             <input
               type="range"
@@ -205,15 +213,15 @@
               max="0.95"
               step="0.05"
               :value="artScale"
-              class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+              class="w-full"
               @input="(e) => $emit('update:artScale', parseFloat((e.target as HTMLInputElement).value))"
             />
           </div>
 
           <div class="space-y-1">
-            <div class="flex justify-between text-xs font-mono text-slate-300">
-              <span>Posição no Muro</span>
-              <span class="text-spray-pink font-bold">{{ verticalPositionLabel }}</span>
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Posição vertical</span>
+              <span class="text-paper font-bold">{{ verticalPositionLabel }}</span>
             </div>
             <input
               type="range"
@@ -221,27 +229,29 @@
               max="0.5"
               step="0.05"
               :value="verticalPosition"
-              class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+              class="w-full"
               @input="(e) => $emit('update:verticalPosition', parseFloat((e.target as HTMLInputElement).value))"
             />
           </div>
         </div>
       </div>
 
-      <!-- Blend Modes (Spray Can Caps) -->
-      <div class="space-y-3 pt-3 border-t border-asphalt-800">
-        <label class="block text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-          [3] Textura & Tinta Spray (Blend)
-        </label>
+      <!-- 03 Tinta -->
+      <div class="space-y-3 pt-3 border-t border-concrete-600">
+        <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
+          <span class="text-paint mr-1.5 font-black">03</span>
+          <span class="text-paper">Tinta</span>
+        </div>
         <div class="grid grid-cols-2 gap-2">
           <button
             v-for="mode in blendModes"
             :key="mode.id"
-            class="py-2 px-2 text-xs font-mono rounded-sm font-bold border text-center transition-all"
+            type="button"
+            class="py-2 px-2 text-xs font-mono rounded-xs font-bold border text-center transition-colors"
             :class="
               blendMode === mode.id
-                ? 'bg-spray-pink border-spray-pink text-white shadow-spray-pink'
-                : 'bg-asphalt-800 border-asphalt-700 text-slate-300 hover:bg-asphalt-700 hover:text-white'
+                ? 'bg-paint border-paint text-paint-dark'
+                : 'bg-concrete-700 border-concrete-600 text-concrete-300 hover:bg-concrete-600 hover:text-paper'
             "
             @click="$emit('update:blendMode', mode.id)"
           >
@@ -250,16 +260,17 @@
         </div>
       </div>
 
-      <!-- Visual Adjustments -->
-      <div class="space-y-3.5 pt-3 border-t border-asphalt-800">
-        <label class="block text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-          [4] Ajustes Visuais
-        </label>
+      <!-- 04 Ajustes -->
+      <div class="space-y-3.5 pt-3 border-t border-concrete-600">
+        <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
+          <span class="text-paint mr-1.5 font-black">04</span>
+          <span class="text-paper">Ajustes</span>
+        </div>
 
         <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-slate-300">
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
             <span>Opacidade</span>
-            <span class="text-spray-volt font-bold">{{ Math.round(opacity * 100) }}%</span>
+            <span class="text-paper font-bold">{{ Math.round(opacity * 100) }}%</span>
           </div>
           <input
             type="range"
@@ -267,15 +278,15 @@
             max="1"
             step="0.01"
             :value="opacity"
-            class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+            class="w-full"
             @input="(e) => $emit('update:opacity', parseFloat((e.target as HTMLInputElement).value))"
           />
         </div>
 
         <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-slate-300">
-            <span>Brilho do Spray</span>
-            <span class="text-spray-yellow font-bold">{{ Math.round((brightness - 1) * 100) }}%</span>
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
+            <span>Brilho</span>
+            <span class="text-paper font-bold">{{ Math.round((brightness - 1) * 100) }}%</span>
           </div>
           <input
             type="range"
@@ -283,15 +294,15 @@
             max="1.5"
             step="0.01"
             :value="brightness"
-            class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+            class="w-full"
             @input="(e) => $emit('update:brightness', parseFloat((e.target as HTMLInputElement).value))"
           />
         </div>
 
         <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-slate-300">
-            <span>Contraste da Tinta</span>
-            <span class="text-spray-pink font-bold">{{ Math.round((contrast - 1) * 100) }}%</span>
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
+            <span>Contraste</span>
+            <span class="text-paper font-bold">{{ Math.round((contrast - 1) * 100) }}%</span>
           </div>
           <input
             type="range"
@@ -299,54 +310,58 @@
             max="1.5"
             step="0.01"
             :value="contrast"
-            class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+            class="w-full"
             @input="(e) => $emit('update:contrast', parseFloat((e.target as HTMLInputElement).value))"
           />
         </div>
       </div>
 
-      <!-- Occlusion Mask Brush -->
-      <div class="space-y-3 pt-3 border-t border-asphalt-800">
+      <!-- 05 Máscara de oclusão -->
+      <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="flex items-center justify-between">
-          <label class="block text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-            [5] Stencil / Oclusão
-          </label>
+          <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
+            <span class="text-paint mr-1.5 font-black">05</span>
+            <span class="text-paper">Máscara de oclusão</span>
+          </div>
           <button
-            class="py-1 px-2.5 text-xs font-mono font-bold rounded-sm border transition-all"
+            type="button"
+            class="py-1 px-2.5 text-xs font-mono font-bold rounded-xs border transition-colors"
             :class="
               isMaskMode
-                ? 'bg-spray-yellow border-spray-yellow text-asphalt-950 shadow-spray-yellow'
-                : 'bg-asphalt-800 border-asphalt-700 text-slate-300 hover:bg-asphalt-700 hover:text-white'
+                ? 'bg-paint border-paint text-paint-dark'
+                : 'bg-concrete-700 border-concrete-600 text-concrete-300 hover:bg-concrete-600 hover:text-paper'
             "
             @click="$emit('toggleMaskMode')"
           >
-            {{ isMaskMode ? 'Sair do Pincel' : 'Pintar Oclusão' }}
+            {{ isMaskMode ? 'Fechar Pincel' : 'Pintar' }}
           </button>
         </div>
 
-        <div v-if="isMaskMode" class="space-y-3 bg-asphalt-950 p-3 rounded-sm border-2 border-asphalt-700">
-          <p class="text-[11px] font-mono text-slate-400 leading-relaxed">
-            Pinte postes, fios ou árvores na frente do muro para que a arte fique atrás deles.
+        <div v-if="isMaskMode" class="space-y-3 bg-concrete-900 p-3 rounded-xs border border-concrete-600">
+          <p class="text-[11px] font-mono text-concrete-300 leading-relaxed">
+            Pinte obstáculos (postes, cabos, árvores) na frente do muro para que a arte fique atrás deles.
           </p>
 
           <div class="flex items-center space-x-2">
             <button
-              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-sm border text-center transition-all"
+              type="button"
+              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-xs border text-center transition-colors"
               :class="
                 !isEraser
-                  ? 'bg-spray-pink border-spray-pink text-white shadow-spray-pink'
-                  : 'bg-asphalt-800 border-asphalt-700 text-slate-400'
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 text-concrete-300'
               "
               @click="$emit('update:isEraser', false)"
             >
               Pincel
             </button>
             <button
-              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-sm border text-center transition-all"
+              type="button"
+              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-xs border text-center transition-colors"
               :class="
                 isEraser
-                  ? 'bg-spray-volt border-spray-volt text-asphalt-950 shadow-spray-volt'
-                  : 'bg-asphalt-800 border-asphalt-700 text-slate-400'
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 text-concrete-300'
               "
               @click="$emit('update:isEraser', true)"
             >
@@ -355,56 +370,62 @@
           </div>
 
           <div class="space-y-1">
-            <div class="flex justify-between text-xs font-mono text-slate-300">
-              <span>Espessura</span>
-              <span class="text-spray-yellow font-bold">{{ brushSize }}px</span>
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Espessura:</span>
+              <span class="text-paper font-bold">{{ brushSize }}px</span>
             </div>
             <input
               type="range"
               min="5"
               max="100"
+              step="5"
               :value="brushSize"
-              class="w-full h-1.5 bg-asphalt-800 rounded-sm appearance-none cursor-pointer"
+              class="w-full"
               @input="(e) => $emit('update:brushSize', parseInt((e.target as HTMLInputElement).value))"
             />
           </div>
 
           <button
-            class="w-full py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-700/50 text-rose-300 rounded-sm text-xs font-mono font-bold transition-colors"
+            type="button"
+            class="w-full py-1.5 text-xs font-mono font-bold text-concrete-300 hover:text-paper border border-concrete-600 rounded-xs bg-concrete-800 transition-colors"
             @click="$emit('clearMask')"
           >
-            Limpar Toda a Máscara
+            Limpar Máscara
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Sticky Bottom Action Footer -->
-    <div class="p-4 border-t-2 border-asphalt-700 space-y-2 bg-asphalt-950/80">
-      <button
-        class="w-full py-2.5 bg-spray-pink hover:bg-spray-pinkHover text-white rounded-sm font-mono font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-all shadow-spray-pink active:scale-98"
-        @click="$emit('save')"
-      >
-        <SaveIcon class="w-4 h-4 stroke-[2.5]" />
-        <span>Salvar no Estúdio</span>
-      </button>
-
+    <!-- Actions Footer -->
+    <div class="p-4 border-t-2 border-concrete-600 bg-concrete-900 space-y-2 mt-auto">
       <div class="flex space-x-2">
         <button
-          class="flex-1 py-2 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 text-slate-200 rounded-sm font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-colors"
+          type="button"
+          class="flex-1 py-2.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
+          @click="$emit('save')"
+        >
+          <SaveIcon class="w-3.5 h-3.5 text-paint" />
+          <span>Salvar</span>
+        </button>
+
+        <button
+          type="button"
+          class="flex-1 py-2.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
           @click="$emit('share')"
         >
-          <Share2Icon class="w-3.5 h-3.5 text-spray-volt" />
+          <Share2Icon class="w-3.5 h-3.5 text-paint" />
           <span>Compartilhar</span>
         </button>
-        <button
-          class="flex-1 py-2 bg-asphalt-800 hover:bg-asphalt-700 border border-asphalt-600 text-slate-200 rounded-sm font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-colors"
-          @click="$emit('export')"
-        >
-          <DownloadIcon class="w-3.5 h-3.5 text-spray-yellow" />
-          <span>Exportar HD</span>
-        </button>
       </div>
+
+      <button
+        type="button"
+        class="w-full py-3 px-4 bg-paint hover:bg-paint-hover border border-paint text-paint-dark rounded-xs text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors shadow-subtle"
+        @click="$emit('export')"
+      >
+        <DownloadIcon class="w-4 h-4 stroke-[2.5]" />
+        <span>Exportar Resolução Original</span>
+      </button>
     </div>
   </aside>
 </template>
@@ -422,7 +443,6 @@ import {
   Camera as CameraIcon,
   Check as CheckIcon,
   Wand2 as Wand2Icon,
-  X as XIcon,
   Crop as CropIcon
 } from 'lucide-vue-next';
 
@@ -446,7 +466,8 @@ const props = withDefaults(
   {
     artScale: 0.70,
     verticalPosition: 0,
-    currentSlope: null
+    currentSlope: null,
+    hasArt: false
   }
 );
 
@@ -472,14 +493,13 @@ const emit = defineEmits<{
   (e: 'toggleCamera'): void;
   (e: 'captureCamera'): void;
   (e: 'autoFit'): void;
-  (e: 'closeMobile'): void;
   (e: 'openImageEditor'): void;
 }>();
 
 const verticalPositionLabel = computed(() => {
   const pos = props.verticalPosition ?? 0;
   if (pos < -0.2) return 'Topo';
-  if (pos > 0.2) return 'Rodapé';
+  if (pos > 0.2) return 'Base';
   return 'Centro';
 });
 
@@ -487,10 +507,10 @@ const baseFileInputRef = ref<HTMLInputElement | null>(null);
 const artFileInputRef = ref<HTMLInputElement | null>(null);
 
 const blendModes: { id: BlendMode; label: string }[] = [
-  { id: 'multiply', label: 'Tinta no Muro (Multiplicação)' },
-  { id: 'overlay', label: 'Spray Intenso (Sobrepor)' },
+  { id: 'multiply', label: 'Tinta no Muro (Multiply)' },
+  { id: 'overlay', label: 'Contraste (Overlay)' },
   { id: 'soft-light', label: 'Luz Suave (Natural)' },
-  { id: 'normal', label: 'Adesivo / Opaco (Normal)' }
+  { id: 'normal', label: 'Adesivo Opaco (Normal)' }
 ];
 
 function handleBasePhotoUpload(e: Event) {
@@ -513,23 +533,34 @@ function loadSampleBase() {
   canvas.height = 800;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = '#1e212b';
+  // Weathered brick foundation
+  ctx.fillStyle = '#452e24';
   ctx.fillRect(0, 0, 1200, 800);
 
-  ctx.strokeStyle = '#12141a';
-  ctx.lineWidth = 4;
-  const brickH = 40;
-  const brickW = 100;
+  // Dark mortar lines
+  ctx.strokeStyle = '#1a1614';
+  ctx.lineWidth = 5;
+  const brickH = 44;
+  const brickW = 110;
 
   for (let y = 0; y < 800; y += brickH) {
     const isOdd = (y / brickH) % 2 === 1;
     const offset = isOdd ? brickW / 2 : 0;
+
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(1200, y);
     ctx.stroke();
 
     for (let x = -offset; x < 1200; x += brickW) {
+      // Slight brick color variance
+      const colorVariance = (Math.sin(x * 12.3 + y * 7.7) * 15) | 0;
+      const r = Math.max(0, Math.min(255, 69 + colorVariance));
+      const g = Math.max(0, Math.min(255, 46 + colorVariance / 2));
+      const b = Math.max(0, Math.min(255, 36 + colorVariance / 3));
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x + 2, y + 2, brickW - 4, brickH - 4);
+
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x, y + brickH);
@@ -537,16 +568,17 @@ function loadSampleBase() {
     }
   }
 
+  // Realistic light surface noise
   const noise = ctx.getImageData(0, 0, 1200, 800);
   for (let i = 0; i < noise.data.length; i += 4) {
-    const grain = (Math.random() - 0.5) * 45;
-    noise.data[i] += grain;
-    noise.data[i + 1] += grain;
-    noise.data[i + 2] += grain;
+    const grain = (Math.random() - 0.5) * 28;
+    noise.data[i] = Math.max(0, Math.min(255, noise.data[i] + grain));
+    noise.data[i + 1] = Math.max(0, Math.min(255, noise.data[i + 1] + grain));
+    noise.data[i + 2] = Math.max(0, Math.min(255, noise.data[i + 2] + grain));
   }
   ctx.putImageData(noise, 0, 0);
 
-  emit('baseLoaded', canvas.toDataURL());
+  emit('baseLoaded', canvas.toDataURL('image/jpeg', 0.95));
 }
 
 function loadSampleArt() {
@@ -555,22 +587,24 @@ function loadSampleArt() {
   canvas.height = 600;
   const ctx = canvas.getContext('2d')!;
 
-  const gradient = ctx.createLinearGradient(0, 0, 800, 600);
-  gradient.addColorStop(0, '#ff0055');
-  gradient.addColorStop(0.5, '#8a2be2');
-  gradient.addColorStop(1, '#00ff88');
-
-  ctx.fillStyle = gradient;
+  // Stencil poster on transparent ground
+  ctx.fillStyle = '#ee5a3c';
   ctx.fillRect(40, 40, 720, 520);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 90px "Permanent Marker", sans-serif';
+  // Concrete dark cutout bar
+  ctx.fillStyle = '#151413';
+  ctx.fillRect(80, 80, 640, 440);
+
+  // Stencil typography in paper tone
+  ctx.fillStyle = '#ece6d8';
+  ctx.font = '900 110px "Big Shoulders Stencil Display", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('MURALIS', 400, 260);
 
-  ctx.font = '32px "Space Grotesk", sans-serif';
-  ctx.fillText('GRAFFITI STUDIO // STREET', 400, 350);
+  ctx.font = '600 20px "IBM Plex Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('ARTE URBANA & FACHADAS', 400, 360);
 
   emit('artLoaded', canvas.toDataURL('image/png'));
 }

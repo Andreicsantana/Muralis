@@ -1,90 +1,81 @@
 <template>
-  <div class="h-full bg-asphalt-950 flex items-center justify-center p-4 relative overflow-hidden">
-    <!-- Street background glow & spray splatter elements -->
-    <div class="absolute -top-32 -left-32 w-96 h-96 bg-spray-pink/15 rounded-full blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-spray-volt/10 rounded-full blur-3xl pointer-events-none"></div>
-
-    <div class="max-w-md w-full bg-asphalt-900 border-2 border-asphalt-700 shadow-brutalist relative p-8 space-y-6 z-10">
-      <!-- Tape / Stencil accent on corner -->
-      <div class="absolute -top-3 -right-3 px-3 py-0.5 bg-spray-yellow text-asphalt-950 text-[10px] font-black tracking-widest uppercase transform rotate-3 shadow-md">
-        STREET LAB v2.0
-      </div>
-
-      <!-- Header -->
-      <div class="text-center space-y-2">
-        <div class="inline-flex items-center justify-center px-4 py-1.5 bg-spray-pink text-white font-tag text-2xl tracking-wider rounded-sm shadow-spray-pink transform -rotate-1 mb-1">
-          MURALIS
+  <div class="h-full bg-concrete-900 text-paper flex items-center justify-center p-4 relative overflow-hidden select-none">
+    <div class="max-w-md w-full bg-concrete-800 border-2 border-concrete-600 shadow-brutalist relative p-6 sm:p-8 space-y-6 rounded-xs">
+      <!-- Stencil Header -->
+      <div class="space-y-2 border-b-2 border-paint pb-4">
+        <div class="flex items-center space-x-2">
+          <span class="w-2 h-6 bg-paint"></span>
+          <h1 class="font-display font-black text-3xl text-paper tracking-wider uppercase">
+            MURALIS
+          </h1>
         </div>
-        <h2 class="text-xl font-display font-black text-white tracking-tight uppercase">
-          {{ isRegister ? 'Cadastre seu Tag' : 'Acesse o Estúdio' }}
+        <h2 class="text-xs font-mono font-bold text-concrete-300 uppercase tracking-widest">
+          {{ isRegister ? 'Cadastro de Artista' : 'Estúdio de Arte Urbana' }}
         </h2>
-        <p class="text-xs text-slate-400 font-mono tracking-wide">
-          // SIMULADOR DE ARTE URBANA, PIXO E FACHADAS
-        </p>
       </div>
 
       <!-- Form -->
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <div v-if="isRegister">
-          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-slate-300 mb-1">
-            Nome de Artista / Tag
+          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-concrete-300 mb-1">
+            Nome do Artista ou Estúdio
           </label>
           <input
             v-model="name"
             type="text"
             required
-            class="w-full bg-asphalt-950 border border-asphalt-700 focus:border-spray-pink focus:ring-1 focus:ring-spray-pink px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
-            placeholder="Ex: OSGEMEOS, KOBRA, NOME..."
+            class="w-full bg-concrete-900 border border-concrete-600 focus:border-paint focus:outline-none px-3.5 py-2.5 text-base md:text-xs text-paper placeholder-concrete-500 rounded-xs transition-colors font-mono"
+            placeholder="Nome ou estúdio"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-slate-300 mb-1">
+          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-concrete-300 mb-1">
             E-mail
           </label>
           <input
             v-model="email"
             type="email"
             required
-            class="w-full bg-asphalt-950 border border-asphalt-700 focus:border-spray-pink focus:ring-1 focus:ring-spray-pink px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
-            placeholder="artista@rua.com"
+            class="w-full bg-concrete-900 border border-concrete-600 focus:border-paint focus:outline-none px-3.5 py-2.5 text-base md:text-xs text-paper placeholder-concrete-500 rounded-xs transition-colors font-mono"
+            placeholder="artista@estudio.com"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-slate-300 mb-1">
+          <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-concrete-300 mb-1">
             Senha
           </label>
           <input
             v-model="password"
             type="password"
             required
-            class="w-full bg-asphalt-950 border border-asphalt-700 focus:border-spray-pink focus:ring-1 focus:ring-spray-pink px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
+            class="w-full bg-concrete-900 border border-concrete-600 focus:border-paint focus:outline-none px-3.5 py-2.5 text-base md:text-xs text-paper placeholder-concrete-500 rounded-xs transition-colors font-mono"
             placeholder="••••••••"
           />
         </div>
 
-        <div v-if="errorMessage" class="p-2.5 bg-rose-950/60 border border-rose-600/50 text-rose-300 text-xs font-mono">
-          [!] {{ errorMessage }}
+        <div v-if="errorMessage" class="p-2.5 bg-danger/20 border border-danger-border text-paper text-xs font-mono rounded-xs">
+          {{ errorMessage }}
         </div>
 
         <button
           type="submit"
           :disabled="loading"
-          class="w-full py-3 px-4 bg-spray-pink hover:bg-spray-pinkHover text-white text-xs font-black uppercase tracking-widest transition-all shadow-spray-pink active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2"
+          class="w-full py-3 px-4 bg-paint hover:bg-paint-hover border border-paint text-paint-dark text-xs font-mono font-black uppercase tracking-wider rounded-xs transition-colors shadow-subtle active:scale-[0.99] disabled:opacity-50 flex items-center justify-center space-x-2"
         >
-          <span>{{ loading ? 'Carregando Sprays...' : isRegister ? 'Criar Registro de Artista' : 'Entrar no Estúdio' }}</span>
+          <span>{{ loading ? 'Processando...' : isRegister ? 'Criar Cadastro' : 'Entrar no Estúdio' }}</span>
         </button>
       </form>
 
       <!-- Footer switch -->
-      <div class="text-center pt-2 border-t border-asphalt-800">
+      <div class="text-center pt-2 border-t border-concrete-600">
         <button
           type="button"
-          class="text-xs text-slate-400 hover:text-spray-volt transition-colors font-mono tracking-wide"
+          class="text-xs text-concrete-300 hover:text-paper transition-colors font-mono tracking-wide"
           @click="isRegister = !isRegister; errorMessage = ''"
         >
-          {{ isRegister ? '← Já possui tag? Entrar no estúdio' : '+ Novo na cena? Cadastre-se' }}
+          {{ isRegister ? 'Já possui conta? Entrar' : 'Não possui conta? Cadastre-se' }}
         </button>
       </div>
     </div>
@@ -122,8 +113,12 @@ async function handleSubmit() {
       body: JSON.stringify(payload)
     });
 
-    authStore.setAuth(res.user, res.token, res.refreshToken);
-    router.push('/projects');
+    if (res.token) {
+      authStore.setAuth(res.user, res.token, res.refreshToken);
+      router.push('/projects');
+    } else {
+      router.push('/projects');
+    }
   } catch (err: any) {
     errorMessage.value = err.message || 'Falha na autenticação';
   } finally {

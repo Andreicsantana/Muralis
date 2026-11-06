@@ -7,44 +7,47 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Space Grotesk"', 'sans-serif'],
-        display: ['"Syne"', 'sans-serif'],
-        tag: ['"Permanent Marker"', 'cursive'],
-        mono: ['"Space Grotesk"', 'monospace']
+        sans: ['"IBM Plex Mono"', 'monospace'],
+        display: ['"Big Shoulders Stencil Display"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'monospace'],
+        label: ['"IBM Plex Mono"', 'monospace']
       },
       colors: {
-        asphalt: {
-          950: '#07080a',
-          900: '#0a0b0e',
-          850: '#0f1117',
-          800: '#141720',
-          700: '#1c202c',
-          600: '#2a3042'
+        concrete: {
+          950: '#0f0e0d', // Viewport darkest
+          900: '#151413', // General background
+          850: '#1c1b19', // Slightly elevated background
+          800: '#262523', // Panel background
+          700: '#33312e', // Elevated button / surface
+          600: '#3a3835', // Standard border
+          500: '#55514b', // Stronger border / divider
+          400: '#736d65', // Subtle text / icon
+          300: '#a8a196', // Secondary text
+          200: '#d1cbc0', // Muted paper
+          100: '#ece6d8'  // Main text "paper"
         },
-        spray: {
-          pink: '#ff0055',
-          pinkHover: '#ff2a75',
-          volt: '#00ff88',
-          voltHover: '#2eff9f',
-          yellow: '#ffe600',
-          purple: '#8a2be2',
-          cyan: '#00e5ff'
+        paper: '#ece6d8',
+        paint: {
+          DEFAULT: '#ee5a3c',
+          hover: '#f26e53',
+          dark: '#151413'
         },
-        brand: {
-          50: '#fff0f5',
-          100: '#ffe0eb',
-          500: '#ff0055',
-          600: '#e6004c',
-          700: '#cc0044',
-          900: '#660022'
+        danger: {
+          DEFAULT: '#99261a',
+          hover: '#b33629',
+          border: '#661911'
         }
       },
+      borderRadius: {
+        xs: '2px',
+        sm: '2px',
+        DEFAULT: '2px',
+        md: '2px',
+        lg: '2px'
+      },
       boxShadow: {
-        'spray-pink': '0 0 25px -5px rgba(255, 0, 85, 0.45)',
-        'spray-volt': '0 0 25px -5px rgba(0, 255, 136, 0.45)',
-        'spray-yellow': '0 0 25px -5px rgba(255, 230, 0, 0.45)',
-        'tag-glow': '0 0 15px rgba(255, 0, 85, 0.35)',
-        'brutalist': '4px 4px 0px 0px rgba(0, 0, 0, 0.9)'
+        brutalist: '3px 3px 0px 0px rgba(0, 0, 0, 0.9)',
+        subtle: '2px 2px 0px 0px rgba(0, 0, 0, 0.4)'
       }
     },
   },

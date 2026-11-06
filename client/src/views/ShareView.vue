@@ -1,43 +1,42 @@
 <template>
-  <div class="h-full bg-asphalt-950 flex flex-col overflow-hidden select-none">
-    <!-- Street Presentation Header -->
-    <header class="h-16 bg-asphalt-900 border-b-2 border-asphalt-700 flex items-center justify-between px-6 z-10">
+  <div class="h-full bg-concrete-900 text-paper flex flex-col overflow-hidden select-none">
+    <!-- Header with 2px accent bottom border -->
+    <header class="h-16 bg-concrete-800 border-b-2 border-paint flex items-center justify-between px-4 sm:px-6 z-10 shrink-0">
       <div class="flex items-center space-x-3">
-        <div class="px-2.5 py-1 bg-spray-pink text-white font-tag text-base tracking-wider rounded-sm shadow-spray-pink transform -rotate-1">
-          M
-        </div>
+        <span class="w-2 h-7 bg-paint"></span>
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="font-display font-black text-sm text-white uppercase tracking-tight">
+            <h1 class="font-display font-black text-sm sm:text-base text-paper uppercase tracking-tight">
               {{ project?.title || 'Simulação de Mural' }}
             </h1>
-            <span class="px-1.5 py-0.5 bg-spray-volt/20 text-spray-volt text-[9px] font-mono font-bold tracking-widest uppercase">
-              3D PREVIEW
+            <span class="px-1.5 py-0.5 border border-concrete-600 bg-concrete-900 text-concrete-300 text-[9px] font-mono font-bold tracking-wider uppercase rounded-xs">
+              VISUALIZAÇÃO
             </span>
           </div>
-          <span class="text-[10px] font-mono text-slate-400 block -mt-0.5">
-            MURALIS STREET LAB // VISUALIZAÇÃO PÚBLICA
+          <span class="text-[10px] font-mono text-concrete-400 block mt-0.5">
+            MURALIS — ARTE URBANA & FACHADAS
           </span>
         </div>
       </div>
 
       <button
         v-if="project"
-        class="py-2 px-4 bg-spray-volt hover:bg-spray-voltHover text-asphalt-950 rounded-sm text-xs font-mono font-black uppercase tracking-wider flex items-center space-x-2 shadow-spray-volt transition-all active:scale-95"
+        type="button"
+        class="py-2 px-3 sm:px-4 bg-paint hover:bg-paint-hover text-paint-dark rounded-xs text-xs font-mono font-black uppercase tracking-wider flex items-center space-x-1.5 transition-colors shadow-subtle active:scale-[0.98]"
         @click="downloadPreview"
       >
-        <DownloadIcon class="w-4 h-4 stroke-[3]" />
+        <DownloadIcon class="w-4 h-4 stroke-[2.5]" />
         <span>Baixar Imagem HD</span>
       </button>
     </header>
 
-    <main class="flex-1 relative flex items-center justify-center p-4 overflow-hidden bg-[#07080a]">
-      <div v-if="loading" class="text-xs font-mono text-slate-400 animate-pulse">
-        [ CARREGANDO SIMULAÇÃO DE MURO... ]
+    <main class="flex-1 relative flex items-center justify-center p-4 overflow-hidden bg-concrete-950">
+      <div v-if="loading" class="text-xs font-mono text-concrete-300">
+        Carregando simulação...
       </div>
 
-      <div v-else-if="error" class="text-xs font-mono text-rose-400 bg-rose-950/40 p-4 border border-rose-700">
-        [!] {{ error }}
+      <div v-else-if="error" class="text-xs font-mono text-paper bg-danger/20 p-4 border border-danger-border rounded-xs">
+        {{ error }}
       </div>
 
       <ViewportCanvas
@@ -86,8 +85,26 @@ async function downloadPreview() {
   if (!viewportRef.value) return;
   try {
     const dataUrl = await viewportRef.value.exportHighRes('image/png');
+    const safeTitle = (project.value?.title || 'mural').toLowerCase().replace(/\s+/g, '-');
+    const fileName = `${safeTitle}-muralis.png`;
+
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        await navigator.share({
+          files: [file],
+          title: project.value?.title || 'Muralis',
+          text: 'Simulação de mural em alta resolução'
+        });
+        return;
+      }
+    } catch {}
+
     const link = document.createElement('a');
-    link.download = `${project.value?.title || 'mural'}-muralis.png`;
+    link.download = fileName;
     link.href = dataUrl;
     link.click();
   } catch (err) {

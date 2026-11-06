@@ -6,19 +6,30 @@
   color-scheme: dark;
 }
 
+/* Ensure mobile inputs never trigger iOS auto-zoom */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+html, body {
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background-color: #07080a;
-  color: #f5f5f7;
+  background-color: #151413;
+  color: #ece6d8;
   user-select: none;
-  touch-action: none;
-  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-image: 
-    radial-gradient(rgba(255, 0, 85, 0.03) 1px, transparent 0),
-    radial-gradient(rgba(0, 255, 136, 0.02) 1px, transparent 0);
-  background-size: 32px 32px;
-  background-position: 0 0, 16px 16px;
+  touch-action: manipulation;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+::selection {
+  background-color: #ee5a3c;
+  color: #151413;
 }
 
 /* Safe area support for mobile notch and navigation bars */
@@ -30,72 +41,68 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Symmetrical concrete scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0b0e;
+  background: #1c1b19;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a3042;
+  background: #3a3835;
   border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff0055;
+  background: #55514b;
 }
 
-/* Graffiti & Street Utilities */
-.spray-text-glow {
-  text-shadow: 0 0 12px rgba(255, 0, 85, 0.6), 0 0 24px rgba(255, 0, 85, 0.3);
-}
-
-.volt-text-glow {
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.6), 0 0 24px rgba(0, 255, 136, 0.3);
-}
-
-.yellow-text-glow {
-  text-shadow: 0 0 12px rgba(255, 230, 0, 0.6), 0 0 24px rgba(255, 230, 0, 0.3);
-}
-
-.stencil-cut {
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-}
-
-.tape-badge {
-  background: repeating-linear-gradient(
-    -45deg,
-    #ffe600,
-    #ffe600 8px,
-    #07080a 8px,
-    #07080a 16px
-  );
-}
-
-/* Range input styling with spray feel */
+/* Range input styling: concrete track with paint accent */
 input[type=range] {
   -webkit-appearance: none;
-  background: #1c202c;
-  border-radius: 4px;
+  appearance: none;
+  height: 6px;
+  background: #33312e;
+  border-radius: 2px;
+  outline: none;
 }
 
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   height: 16px;
   width: 16px;
-  border-radius: 3px;
-  background: #ff0055;
+  border-radius: 2px;
+  background: #ee5a3c;
   cursor: pointer;
-  box-shadow: 0 0 10px #ff0055;
-  border: 2px solid #ffffff;
+  border: 1px solid #151413;
   transition: transform 0.1s ease;
 }
 
-input[type=range]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  background: #00ff88;
-  box-shadow: 0 0 12px #00ff88;
+/* Touch devices thumb with at least 28px hit area */
+@media (pointer: coarse) {
+  input[type=range] {
+    height: 8px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    height: 28px;
+    width: 28px;
+    border-radius: 2px;
+  }
+}
+
+input[type=range]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px #151413, 0 0 0 4px #ee5a3c;
+}
+
+/* Accessible focus ring for buttons and inputs */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #ee5a3c;
+  outline-offset: 1px;
 }

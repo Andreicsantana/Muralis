@@ -1,11 +1,11 @@
 <template>
   <div
     ref="containerRef"
-    class="relative w-full h-full bg-[#07080a] flex items-center justify-center overflow-hidden cursor-default"
+    class="relative w-full h-full bg-concrete-950 flex items-center justify-center overflow-hidden cursor-default touch-none"
     @pointerdown="handleContainerPointerDown"
   >
-    <div class="relative flex items-center justify-center shadow-2xl rounded-sm">
-      <canvas ref="canvasRef" class="rounded-sm block"></canvas>
+    <div class="relative flex items-center justify-center shadow-md rounded-xs">
+      <canvas ref="canvasRef" class="rounded-xs block"></canvas>
 
       <video
         ref="videoRef"
@@ -17,7 +17,7 @@
 
       <!-- Selection & Perspective Handles (Visible only when selected) -->
       <CornerHandles
-        v-if="showHandles && isSelected && bounds.width > 0 && artImage"
+        v-if="showHandles && isSelected && bounds.width > 0 && artImage && !isMaskMode"
         :corner-points="cornerPoints"
         :canvas-bounds="bounds"
         @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
@@ -26,12 +26,22 @@
         @drag-end="() => $emit('dragEnd')"
       />
 
+      <!-- Occlusion Mask Brush Overlay (Overlayed exactly on the canvas) -->
+      <MaskBrush
+        v-if="isMaskMode"
+        ref="maskBrushRef"
+        :brush-size="brushSize || 30"
+        :is-eraser="isEraser || false"
+        :canvas-bounds="bounds"
+        @mask-updated="(canvas) => $emit('maskUpdated', canvas)"
+      />
+
       <!-- Quick Hint when deselected -->
       <div
-        v-if="showHandles && !isSelected && artImage"
-        class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-asphalt-950/80 border border-asphalt-700 text-slate-400 font-mono text-[10px] rounded-sm pointer-events-none shadow-md"
+        v-if="showHandles && !isSelected && artImage && !isMaskMode"
+        class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-concrete-800 border border-concrete-600 text-concrete-300 font-mono text-[10px] rounded-xs pointer-events-none shadow-subtle"
       >
-        [ Clique na arte para selecionar // Esc para desmarcar ]
+        Toque na arte para selecionar
       </div>
     </div>
   </div>
@@ -43,6 +53,7 @@ import { Point2D } from '../../engine/homography.js';
 import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
 import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane } from '../../engine/autoFit.js';
 import CornerHandles from './CornerHandles.vue';
+import MaskBrush from './MaskBrush.vue';
 
 const props = defineProps<{
   basePhotoUrl: string | null;
@@ -55,6 +66,9 @@ const props = defineProps<{
   showHandles: boolean;
   maskCanvas?: HTMLCanvasElement | null;
   isCameraActive?: boolean;
+  isMaskMode?: boolean;
+  brushSize?: number;
+  isEraser?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -64,11 +78,13 @@ const emit = defineEmits<{
   (e: 'dragEnd'): void;
   (e: 'cameraFrameCaptured', dataUrl: string): void;
   (e: 'cameraError', error: string): void;
+  (e: 'maskUpdated', canvas: HTMLCanvasElement): void;
 }>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
+const maskBrushRef = ref<InstanceType<typeof MaskBrush> | null>(null);
 
 const baseImage = shallowRef<HTMLImageElement | null>(null);
 const artImage = shallowRef<HTMLImageElement | null>(null);
@@ -84,6 +100,7 @@ const bounds = reactive({
 });
 
 let animationFrameId: number | null = null;
+let isStartingCamera = false;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -108,6 +125,7 @@ function isPointInsideQuad(pt: Point2D, quad: [Point2D, Point2D, Point2D, Point2
 }
 
 function handleContainerPointerDown(e: PointerEvent) {
+  if (props.isMaskMode) return;
   if (!canvasRef.value) {
     isSelected.value = false;
     return;
@@ -131,7 +149,16 @@ function handleContainerPointerDown(e: PointerEvent) {
 }
 
 async function startCamera() {
+  if (isStartingCamera) return;
+
+  const tracks = mediaStream.value?.getVideoTracks();
+  if (mediaStream.value && tracks && tracks.length > 0 && tracks[0].readyState === 'live') {
+    return;
+  }
+
+  isStartingCamera = true;
   stopCamera();
+
   try {
     const constraints: MediaStreamConstraints = {
       video: {
@@ -145,6 +172,15 @@ async function startCamera() {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     mediaStream.value = stream;
 
+    // Listen to track.onended (e.g. OS/browser terminates track when file picker or app backgrounded)
+    stream.getVideoTracks().forEach(track => {
+      track.onended = () => {
+        if (props.isCameraActive && document.visibilityState === 'visible') {
+          startCamera();
+        }
+      };
+    });
+
     if (videoRef.value) {
       videoRef.value.srcObject = stream;
       await videoRef.value.play();
@@ -156,18 +192,33 @@ async function startCamera() {
   } catch (err: any) {
     console.error('Failed to start camera', err);
     emit('cameraError', err.message || 'Não foi possível acessar a câmera.');
+  } finally {
+    isStartingCamera = false;
   }
 }
 
 function stopCamera() {
   if (mediaStream.value) {
-    mediaStream.value.getTracks().forEach(track => track.stop());
+    mediaStream.value.getTracks().forEach(track => {
+      track.onended = null;
+      track.stop();
+    });
     mediaStream.value = null;
   }
   if (videoRef.value) {
     videoRef.value.srcObject = null;
   }
   stopContinuousRender();
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible' && props.isCameraActive) {
+    const tracks = mediaStream.value?.getVideoTracks();
+    const isLive = tracks && tracks.length > 0 && tracks[0].readyState === 'live';
+    if (!isLive) {
+      startCamera();
+    }
+  }
 }
 
 function captureCameraFrame(): string | null {
@@ -400,6 +451,12 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
+function clearMask() {
+  if (maskBrushRef.value) {
+    maskBrushRef.value.clearMask();
+  }
+}
+
 defineExpose({
   exportHighRes,
   updateLayout,
@@ -408,6 +465,7 @@ defineExpose({
   captureCameraFrame,
   autoFitWall,
   applyDirectionPreset,
+  clearMask,
   select: () => (isSelected.value = true),
   deselect: () => (isSelected.value = false)
 });
@@ -441,6 +499,9 @@ watch(
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('keydown', handleKeyDown);
+
   if (containerRef.value) {
     resizeObserver = new ResizeObserver(() => {
       updateLayout();
@@ -448,20 +509,20 @@ onMounted(() => {
     });
     resizeObserver.observe(containerRef.value);
   }
+
   if (props.isCameraActive) {
     startCamera();
   } else {
     updateBaseImage();
   }
   updateArtImage();
-
-  window.addEventListener('keydown', handleKeyDown);
 });
 
 onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  window.removeEventListener('keydown', handleKeyDown);
   stopCamera();
   if (resizeObserver) resizeObserver.disconnect();
   stopContinuousRender();
-  window.removeEventListener('keydown', handleKeyDown);
 });
 </script>
