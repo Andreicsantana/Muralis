@@ -30,7 +30,7 @@
         <div class="flex items-center space-x-2">
           <span class="w-1.5 h-3.5 bg-[#ee5a3c]"></span>
           <span class="font-mono text-xs font-bold text-[#ece6d8] uppercase tracking-wider">
-            Ajustes do Mural
+            Arte & Ajustes
           </span>
           <span class="text-[10px] font-mono text-[#a8a196]">
             [{{ snapLabel }}]

@@ -84,32 +84,84 @@
           @camera-error="handleCameraError"
           @mask-updated="handleMaskUpdated"
         />
+
+        <!-- Input invisível para upload direto da arte pelo viewport ou barra flutuante -->
+        <input
+          ref="directArtInputRef"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="handleDirectArtUpload"
+        />
+
+        <!-- Prompt central quando ainda não há arte carregada -->
+        <div
+          v-if="!projectStore.currentProject.artAssetUrl"
+          class="absolute z-20 flex flex-col items-center justify-center pointer-events-none p-4 text-center max-w-xs"
+        >
+          <button
+            type="button"
+            class="pointer-events-auto py-3 px-5 bg-paint hover:bg-paint-hover text-paint-dark border border-paint rounded-xs text-xs font-mono font-black uppercase tracking-wider flex items-center space-x-2 shadow-brutalist transition-transform active:scale-95"
+            @click="directArtInputRef?.click()"
+          >
+            <UploadIcon class="w-4 h-4 stroke-[2.5]" />
+            <span>Adicionar Sua Arte</span>
+          </button>
+          <span class="mt-2 text-[10px] font-mono text-concrete-300 bg-concrete-900/90 border border-concrete-600 px-2 py-0.5 rounded-xs">
+            Projete sua arte na parede
+          </span>
+        </div>
       </div>
 
       <!-- Mobile Floating Shortcut Bar (Visible only when sheet is closed or half) -->
       <div
         v-if="mobileSnap !== 'open'"
-        class="md:hidden landscape:hidden absolute bottom-16 left-4 right-4 z-20 flex items-center justify-center pointer-events-none"
+        class="md:hidden landscape:hidden absolute bottom-16 left-3 right-3 z-20 flex items-center justify-center pointer-events-none"
       >
-        <div class="bg-concrete-800 border border-concrete-600 p-1.5 rounded-xs shadow-brutalist flex items-center space-x-2 pointer-events-auto">
+        <div class="bg-concrete-800 border border-concrete-600 p-1.5 rounded-xs shadow-brutalist flex items-center space-x-1.5 pointer-events-auto max-w-full overflow-x-auto">
+          <!-- A ARTE VEM EM PRIMEIRO LUGAR -->
           <button
             type="button"
-            class="py-1.5 px-3 border text-xs font-mono font-bold uppercase rounded-xs flex items-center space-x-1.5 transition-colors"
-            :class="isCameraActive ? 'bg-danger text-paper border-danger-border' : 'bg-paint text-paint-dark border-paint'"
-            @click="handleToggleCamera"
+            class="py-2 px-3.5 bg-paint hover:bg-paint-hover border border-paint text-paint-dark font-mono text-xs font-black uppercase rounded-xs flex items-center space-x-1.5 transition-colors shadow-subtle shrink-0 active:scale-95"
+            @click="directArtInputRef?.click()"
           >
-            <CameraIcon class="w-3.5 h-3.5" />
-            <span>{{ isCameraActive ? 'Parar Câmera' : 'Ligar Câmera' }}</span>
+            <UploadIcon class="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>{{ projectStore.currentProject.artAssetUrl ? 'Trocar Arte' : 'Carregar Arte' }}</span>
           </button>
 
+          <!-- Se tem arte: atalho rápido para editar/cortar -->
+          <button
+            v-if="projectStore.currentProject.artAssetUrl"
+            type="button"
+            class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 text-paper font-mono text-xs font-bold uppercase rounded-xs flex items-center space-x-1 transition-colors shrink-0 active:scale-95"
+            title="Cortar e girar arte"
+            @click="isImageEditorOpen = true"
+          >
+            <CropIcon class="w-3.5 h-3.5 text-paint" />
+            <span>Cortar</span>
+          </button>
+
+          <!-- Congelar da Câmera ou Alternar Câmera -->
           <button
             v-if="isCameraActive"
             type="button"
-            class="py-1.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-500 text-paper font-mono text-xs font-bold uppercase rounded-xs flex items-center space-x-1 transition-colors"
+            class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-500 text-paper font-mono text-xs font-bold uppercase rounded-xs flex items-center space-x-1 transition-colors shrink-0 active:scale-95"
+            title="Congelar foto da parede"
             @click="handleCaptureCamera"
           >
             <CheckIcon class="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Congelar Foto</span>
+            <span>Congelar</span>
+          </button>
+
+          <button
+            v-else
+            type="button"
+            class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 text-concrete-300 font-mono text-xs font-bold uppercase rounded-xs flex items-center space-x-1 transition-colors shrink-0 active:scale-95"
+            title="Ligar câmera ao vivo"
+            @click="handleToggleCamera"
+          >
+            <CameraIcon class="w-3.5 h-3.5 text-concrete-300" />
+            <span>Câmera</span>
           </button>
         </div>
       </div>
@@ -259,7 +311,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowLeft as ArrowLeftIcon, Camera as CameraIcon, Check as CheckIcon } from 'lucide-vue-next';
+import { ArrowLeft as ArrowLeftIcon, Camera as CameraIcon, Check as CheckIcon, Upload as UploadIcon, Crop as CropIcon } from 'lucide-vue-next';
 import { useProjectStore } from '../stores/projectStore.js';
 import { Point2D } from '../engine/homography.js';
 import ViewportCanvas from '../components/editor/ViewportCanvas.vue';
@@ -284,6 +336,17 @@ const artScale = ref(0.70);
 const verticalPosition = ref(0);
 const manualSlope = ref<number | null>(null);
 const isImageEditorOpen = ref(false);
+const directArtInputRef = ref<HTMLInputElement | null>(null);
+
+function handleDirectArtUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  handleArtLoaded(url);
+  setTimeout(() => {
+    handleAutoFit();
+  }, 100);
+}
 
 const shareModalOpen = ref(false);
 const shareUrl = ref('');

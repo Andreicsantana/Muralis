@@ -6,7 +6,7 @@
         <span class="text-[10px] font-mono text-paint font-bold uppercase tracking-wider block">
           PAINEL DE CONTROLE
         </span>
-        <h2 class="font-display font-black text-paper text-lg tracking-tight uppercase">Ajustes</h2>
+        <h2 class="font-display font-black text-paper text-lg tracking-tight uppercase">Arte & Ajustes</h2>
       </div>
 
       <div class="flex items-center space-x-1.5">
@@ -34,89 +34,39 @@
     </div>
 
     <div class="p-4 space-y-6 flex-1">
-      <!-- 01 Camadas -->
+      <!-- 01 SUA ARTE (PRIORIDADE MÁXIMA) -->
       <div class="space-y-3">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">01</span>
-          <span class="text-paper">Camadas</span>
+          <span class="text-paper">Sua Arte</span>
         </div>
 
-        <!-- Wall Photo Upload -->
         <div>
-          <span class="block text-xs font-mono text-concrete-300 mb-1">Muro ou Fachada</span>
-          <div class="flex items-center space-x-2">
-            <input
-              ref="baseFileInputRef"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleBasePhotoUpload"
-            />
-            <button
-              type="button"
-              class="flex-1 py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
-              @click="baseFileInputRef?.click()"
-            >
-              <UploadIcon class="w-3.5 h-3.5 text-paint" />
-              <span>Carregar Foto</span>
-            </button>
-            <button
-              type="button"
-              class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
-              title="Carregar foto de tijolos de exemplo"
-              @click="loadSampleBase"
-            >
-              Exemplo
-            </button>
-          </div>
+          <span class="block text-xs font-mono text-concrete-300 mb-1.5">
+            Ilustração, Graffiti ou Logo (PNG, JPG)
+          </span>
 
-          <!-- Live Camera Button -->
-          <div class="mt-2 flex items-center space-x-2">
-            <button
-              type="button"
-              class="flex-1 py-2 px-3 border rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-colors"
-              :class="isCameraActive ? 'bg-danger text-paper border-danger-border' : 'bg-paint hover:bg-paint-hover text-paint-dark border-paint'"
-              @click="$emit('toggleCamera')"
-              :title="isCameraActive ? 'Desativar câmera' : 'Apontar a câmera para o muro'"
-            >
-              <CameraIcon class="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{{ isCameraActive ? 'Desativar Câmera' : 'Câmera ao Vivo' }}</span>
-            </button>
-            <button
-              v-if="isCameraActive"
-              type="button"
-              class="py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-500 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1 transition-colors"
-              title="Congelar e salvar foto do muro"
-              @click="$emit('captureCamera')"
-            >
-              <CheckIcon class="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Capturar</span>
-            </button>
-          </div>
-        </div>
+          <input
+            ref="artFileInputRef"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            @change="handleArtUpload"
+          />
 
-        <!-- Artwork Upload -->
-        <div>
-          <span class="block text-xs font-mono text-concrete-300 mb-1">Arte ou Tipografia</span>
           <div class="flex items-center space-x-2">
-            <input
-              ref="artFileInputRef"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleArtUpload"
-            />
             <button
               type="button"
-              class="flex-1 py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
+              class="flex-1 py-2.5 px-3 bg-paint hover:bg-paint-hover border border-paint rounded-xs text-xs font-mono font-black uppercase tracking-wider text-paint-dark flex items-center justify-center space-x-2 transition-colors shadow-subtle active:scale-[0.98]"
               @click="artFileInputRef?.click()"
             >
-              <UploadIcon class="w-3.5 h-3.5 text-paint" />
-              <span>Carregar Arte</span>
+              <UploadIcon class="w-4 h-4 stroke-[2.5]" />
+              <span>{{ hasArt ? 'Trocar Arte' : 'Carregar Arte' }}</span>
             </button>
+
             <button
               type="button"
-              class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
+              class="py-2.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
               title="Carregar arte stencil de exemplo"
               @click="loadSampleArt"
             >
@@ -128,7 +78,7 @@
           <button
             v-if="hasArt"
             type="button"
-            class="mt-2 w-full py-1.5 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-2 transition-colors"
+            class="mt-2 w-full py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-2 transition-colors"
             @click="$emit('openImageEditor')"
           >
             <CropIcon class="w-3.5 h-3.5 text-paint" />
@@ -137,26 +87,26 @@
         </div>
       </div>
 
-      <!-- 02 Perspectiva -->
+      <!-- 02 PERSPECTIVA DA ARTE -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">02</span>
-          <span class="text-paper">Perspectiva</span>
+          <span class="text-paper">Perspectiva da Arte</span>
         </div>
 
         <button
           type="button"
-          class="w-full py-2.5 px-3 bg-paint hover:bg-paint-hover text-paint-dark rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors shadow-subtle"
+          class="w-full py-2.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors text-paper"
           @click="$emit('autoFit')"
-          title="Detectar alinhamento e ajustar perspectiva"
+          title="Detectar alinhamento da parede e ajustar perspectiva da arte"
         >
-          <Wand2Icon class="w-4 h-4 text-paint-dark" />
+          <Wand2Icon class="w-4 h-4 text-paint" />
           <span>Auto-ajustar ao muro</span>
         </button>
 
         <!-- Quick Direction Presets -->
         <div class="space-y-1">
-          <span class="text-[11px] font-mono text-concrete-300 uppercase">Direção do muro:</span>
+          <span class="text-[11px] font-mono text-concrete-300 uppercase">Fuga da parede:</span>
           <div class="grid grid-cols-3 gap-1.5">
             <button
               type="button"
@@ -204,7 +154,7 @@
         <div class="space-y-2.5 pt-1">
           <div class="space-y-1">
             <div class="flex justify-between text-xs font-mono text-concrete-300">
-              <span>Escala da arte</span>
+              <span>Tamanho da arte</span>
               <span class="text-paper font-bold">{{ Math.round(artScale * 100) }}%</span>
             </div>
             <input
@@ -236,11 +186,11 @@
         </div>
       </div>
 
-      <!-- 03 Tinta -->
+      <!-- 03 TINTA & MISTURA -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">03</span>
-          <span class="text-paper">Tinta</span>
+          <span class="text-paper">Tinta & Mistura</span>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <button
@@ -258,65 +208,124 @@
             {{ mode.label }}
           </button>
         </div>
+
+        <div class="space-y-3 pt-1">
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Opacidade da tinta</span>
+              <span class="text-paper font-bold">{{ Math.round(opacity * 100) }}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              :value="opacity"
+              class="w-full"
+              @input="(e) => $emit('update:opacity', parseFloat((e.target as HTMLInputElement).value))"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Brilho</span>
+              <span class="text-paper font-bold">{{ Math.round((brightness - 1) * 100) }}%</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.01"
+              :value="brightness"
+              class="w-full"
+              @input="(e) => $emit('update:brightness', parseFloat((e.target as HTMLInputElement).value))"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Contraste</span>
+              <span class="text-paper font-bold">{{ Math.round((contrast - 1) * 100) }}%</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.01"
+              :value="contrast"
+              class="w-full"
+              @input="(e) => $emit('update:contrast', parseFloat((e.target as HTMLInputElement).value))"
+            />
+          </div>
+        </div>
       </div>
 
-      <!-- 04 Ajustes -->
-      <div class="space-y-3.5 pt-3 border-t border-concrete-600">
+      <!-- 04 MURO OU FACHADA (FUNDO) -->
+      <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">04</span>
-          <span class="text-paper">Ajustes</span>
+          <span class="text-paper">Muro ou Fachada</span>
         </div>
 
-        <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-concrete-300">
-            <span>Opacidade</span>
-            <span class="text-paper font-bold">{{ Math.round(opacity * 100) }}%</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            :value="opacity"
-            class="w-full"
-            @input="(e) => $emit('update:opacity', parseFloat((e.target as HTMLInputElement).value))"
-          />
-        </div>
+        <div>
+          <span class="block text-xs font-mono text-concrete-300 mb-1.5">
+            Parede de Fundo (Câmera ou Foto)
+          </span>
 
-        <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-concrete-300">
-            <span>Brilho</span>
-            <span class="text-paper font-bold">{{ Math.round((brightness - 1) * 100) }}%</span>
+          <!-- Live Camera Button -->
+          <div class="flex items-center space-x-2">
+            <button
+              type="button"
+              class="flex-1 py-2 px-3 border rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-colors"
+              :class="isCameraActive ? 'bg-danger text-paper border-danger-border' : 'bg-concrete-700 hover:bg-concrete-600 text-paper border-concrete-600'"
+              @click="$emit('toggleCamera')"
+              :title="isCameraActive ? 'Desativar câmera' : 'Apontar a câmera para o muro'"
+            >
+              <CameraIcon class="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>{{ isCameraActive ? 'Desativar Câmera' : 'Câmera ao Vivo' }}</span>
+            </button>
+            <button
+              v-if="isCameraActive"
+              type="button"
+              class="py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-500 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1 transition-colors"
+              title="Congelar e salvar foto do muro"
+              @click="$emit('captureCamera')"
+            >
+              <CheckIcon class="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Congelar</span>
+            </button>
           </div>
-          <input
-            type="range"
-            min="0.5"
-            max="1.5"
-            step="0.01"
-            :value="brightness"
-            class="w-full"
-            @input="(e) => $emit('update:brightness', parseFloat((e.target as HTMLInputElement).value))"
-          />
-        </div>
 
-        <div class="space-y-1">
-          <div class="flex justify-between text-xs font-mono text-concrete-300">
-            <span>Contraste</span>
-            <span class="text-paper font-bold">{{ Math.round((contrast - 1) * 100) }}%</span>
+          <!-- Wall Photo Upload -->
+          <div class="mt-2 flex items-center space-x-2">
+            <input
+              ref="baseFileInputRef"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleBasePhotoUpload"
+            />
+            <button
+              type="button"
+              class="flex-1 py-2 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
+              @click="baseFileInputRef?.click()"
+            >
+              <UploadIcon class="w-3.5 h-3.5 text-concrete-300" />
+              <span>Foto da Parede</span>
+            </button>
+            <button
+              type="button"
+              class="py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 rounded-xs text-xs font-mono text-concrete-300 hover:text-paper transition-colors"
+              title="Carregar foto de tijolos de exemplo"
+              @click="loadSampleBase"
+            >
+              Exemplo
+            </button>
           </div>
-          <input
-            type="range"
-            min="0.5"
-            max="1.5"
-            step="0.01"
-            :value="contrast"
-            class="w-full"
-            @input="(e) => $emit('update:contrast', parseFloat((e.target as HTMLInputElement).value))"
-          />
         </div>
       </div>
 
-      <!-- 05 Máscara de oclusão -->
+      <!-- 05 MÁSCARA DE OCLUSÃO -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="flex items-center justify-between">
           <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
@@ -533,11 +542,9 @@ function loadSampleBase() {
   canvas.height = 800;
   const ctx = canvas.getContext('2d')!;
 
-  // Weathered brick foundation
   ctx.fillStyle = '#452e24';
   ctx.fillRect(0, 0, 1200, 800);
 
-  // Dark mortar lines
   ctx.strokeStyle = '#1a1614';
   ctx.lineWidth = 5;
   const brickH = 44;
@@ -553,7 +560,6 @@ function loadSampleBase() {
     ctx.stroke();
 
     for (let x = -offset; x < 1200; x += brickW) {
-      // Slight brick color variance
       const colorVariance = (Math.sin(x * 12.3 + y * 7.7) * 15) | 0;
       const r = Math.max(0, Math.min(255, 69 + colorVariance));
       const g = Math.max(0, Math.min(255, 46 + colorVariance / 2));
@@ -568,7 +574,6 @@ function loadSampleBase() {
     }
   }
 
-  // Realistic light surface noise
   const noise = ctx.getImageData(0, 0, 1200, 800);
   for (let i = 0; i < noise.data.length; i += 4) {
     const grain = (Math.random() - 0.5) * 28;
@@ -587,15 +592,12 @@ function loadSampleArt() {
   canvas.height = 600;
   const ctx = canvas.getContext('2d')!;
 
-  // Stencil poster on transparent ground
   ctx.fillStyle = '#ee5a3c';
   ctx.fillRect(40, 40, 720, 520);
 
-  // Concrete dark cutout bar
   ctx.fillStyle = '#151413';
   ctx.fillRect(80, 80, 640, 440);
 
-  // Stencil typography in paper tone
   ctx.fillStyle = '#ece6d8';
   ctx.font = '900 110px "Big Shoulders Stencil Display", sans-serif';
   ctx.textAlign = 'center';
