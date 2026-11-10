@@ -24,7 +24,7 @@
 
       <!-- Sheet Header / Bar -->
       <div
-        class="px-4 py-2 flex items-center justify-between border-b border-[#3a3835] bg-[#262523] shrink-0"
+        class="px-4 py-2 flex items-center justify-between border-b border-[#3a3835] bg-[#262523] shrink-0 touch-none"
         @pointerdown="onHeaderPointerDown"
       >
         <div class="flex items-center space-x-2">
@@ -61,10 +61,8 @@
       <!-- Scrollable Sheet Content -->
       <div
         ref="contentRef"
-        class="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,16px)]"
-        @touchstart="onContentTouchStart"
-        @touchmove="onContentTouchMove"
-        @touchend="onContentTouchEnd"
+        class="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,16px)]"
+        :style="contentStyle"
       >
         <slot />
       </div>
@@ -139,6 +137,11 @@ const sheetStyle = computed(() => {
     transform: `translate3d(0, ${Math.max(0, translateY)}px, 0)`,
     transition
   };
+});
+
+const contentStyle = computed(() => {
+  const hiddenHeight = isDragging.value ? 0 : getSnapTranslateY(currentSnap.value);
+  return { marginBottom: `${Math.max(0, Math.round(hiddenHeight))}px` };
 });
 
 const snapLabel = computed(() => {
@@ -270,94 +273,6 @@ function onPointerUp(e: PointerEvent) {
     setSnap('half');
   } else {
     setSnap('closed');
-  }
-}
-
-// Content Touch Scroll / Drag Coordination
-let contentTouchStartY = 0;
-let isDraggingFromContent = false;
-
-function onContentTouchStart(e: TouchEvent) {
-  if (e.touches.length !== 1) return;
-  contentTouchStartY = e.touches[0].clientY;
-
-  // In half or closed snap, dragging content moves sheet
-  if (currentSnap.value !== 'open') {
-    isDraggingFromContent = true;
-    startTranslate = getSnapTranslateY(currentSnap.value);
-    dragTranslateY.value = startTranslate;
-    startY = contentTouchStartY;
-    lastMoveY = startY;
-    lastMoveTime = performance.now();
-    velocityY = 0;
-    isDragging.value = true;
-  } else {
-    isDraggingFromContent = false;
-  }
-}
-
-function onContentTouchMove(e: TouchEvent) {
-  if (e.touches.length !== 1) return;
-  const currentTouchY = e.touches[0].clientY;
-  const deltaY = currentTouchY - contentTouchStartY;
-
-  // When sheet is 'open' and content is scrolled to top (scrollTop <= 0) and dragging downward
-  if (currentSnap.value === 'open' && contentRef.value && contentRef.value.scrollTop <= 0 && deltaY > 0) {
-    if (!isDragging.value) {
-      isDragging.value = true;
-      isDraggingFromContent = true;
-      startTranslate = getSnapTranslateY('open');
-      dragTranslateY.value = startTranslate;
-      startY = currentTouchY;
-      lastMoveY = currentTouchY;
-      lastMoveTime = performance.now();
-      velocityY = 0;
-    }
-  }
-
-  if (isDraggingFromContent && isDragging.value) {
-    const dy = currentTouchY - startY;
-    const now = performance.now();
-    const dt = now - lastMoveTime;
-    if (dt > 10) {
-      velocityY = (currentTouchY - lastMoveY) / dt;
-      lastMoveY = currentTouchY;
-      lastMoveTime = now;
-    }
-    const vh = getViewportHeight();
-    const maxTranslate = vh * 0.88 - CLOSED_VISIBLE_PX;
-    dragTranslateY.value = Math.max(0, Math.min(maxTranslate, startTranslate + dy));
-    e.preventDefault();
-  }
-}
-
-function onContentTouchEnd() {
-  if (isDraggingFromContent && isDragging.value) {
-    isDragging.value = false;
-    isDraggingFromContent = false;
-
-    const currentY = dragTranslateY.value;
-    const snapOpen = getSnapTranslateY('open');
-    const snapHalf = getSnapTranslateY('half');
-    const snapClosed = getSnapTranslateY('closed');
-
-    if (velocityY > 0.4) {
-      if (currentSnap.value === 'open') setSnap('half');
-      else setSnap('closed');
-      return;
-    } else if (velocityY < -0.4) {
-      if (currentSnap.value === 'closed') setSnap('half');
-      else setSnap('open');
-      return;
-    }
-
-    const distOpen = Math.abs(currentY - snapOpen);
-    const distHalf = Math.abs(currentY - snapHalf);
-    const distClosed = Math.abs(currentY - snapClosed);
-
-    if (distOpen <= distHalf && distOpen <= distClosed) setSnap('open');
-    else if (distHalf <= distOpen && distHalf <= distClosed) setSnap('half');
-    else setSnap('closed');
   }
 }
 
