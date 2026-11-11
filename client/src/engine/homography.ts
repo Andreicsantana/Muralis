@@ -90,3 +90,89 @@ export function transformPoint(matrix: Matrix3x3, point: Point2D): Point2D {
     y: (matrix[3] * x + matrix[4] * y + matrix[5]) * invW
   };
 }
+
+/**
+ * Calcula o determinante de uma matriz 3x3.
+ */
+export function determinant3x3(m: Matrix3x3): number {
+  return (
+    m[0] * (m[4] * m[8] - m[5] * m[7]) -
+    m[1] * (m[3] * m[8] - m[5] * m[6]) +
+    m[2] * (m[3] * m[7] - m[4] * m[6])
+  );
+}
+
+/**
+ * Calcula a matriz inversa de uma matriz 3x3 usando a matriz adjunta de cofatores.
+ */
+export function invertMatrix3x3(m: Matrix3x3): Matrix3x3 | null {
+  const det = determinant3x3(m);
+  if (Math.abs(det) < 1e-12) {
+    return null; // Matriz singular / não inversível
+  }
+
+  const invDet = 1 / det;
+
+  return [
+    (m[4] * m[8] - m[5] * m[7]) * invDet,
+    (m[2] * m[7] - m[1] * m[8]) * invDet,
+    (m[1] * m[5] - m[2] * m[4]) * invDet,
+
+    (m[5] * m[6] - m[3] * m[8]) * invDet,
+    (m[0] * m[8] - m[2] * m[6]) * invDet,
+    (m[2] * m[3] - m[0] * m[5]) * invDet,
+
+    (m[3] * m[7] - m[4] * m[6]) * invDet,
+    (m[1] * m[6] - m[0] * m[7]) * invDet,
+    (m[0] * m[4] - m[1] * m[3]) * invDet
+  ];
+}
+
+/**
+ * Multiplica duas matrizes 3x3 (A x B).
+ */
+export function multiplyMatrix3x3(a: Matrix3x3, b: Matrix3x3): Matrix3x3 {
+  const result: number[] = new Array(9).fill(0);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      let sum = 0;
+      for (let k = 0; k < 3; k++) {
+        sum += a[r * 3 + k] * b[k * 3 + c];
+      }
+      result[r * 3 + c] = sum;
+    }
+  }
+  return result as Matrix3x3;
+}
+
+/**
+ * Decomposição aproximada dos componentes afins e projetivos da homografia.
+ */
+export function decomposeHomography(m: Matrix3x3) {
+  const norm = m[8] !== 0 ? m[8] : 1;
+  const h = m.map(v => v / norm) as Matrix3x3;
+
+  const translation = { x: h[2], y: h[5] };
+  const perspective = { x: h[6], y: h[7] };
+
+  const a = h[0];
+  const b = h[1];
+  const c = h[3];
+  const d = h[4];
+
+  const scaleX = Math.sqrt(a * a + c * c);
+  const scaleY = Math.sqrt(b * b + d * d);
+  const rotationRad = Math.atan2(c, a);
+  const rotationDeg = (rotationRad * 180) / Math.PI;
+  const skew = Math.atan2(a * b + c * d, Math.max(1e-6, scaleX * scaleY));
+
+  return {
+    det: determinant3x3(m),
+    translation,
+    perspective,
+    scaleX,
+    scaleY,
+    rotationDeg,
+    skew
+  };
+}

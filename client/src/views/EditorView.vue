@@ -76,6 +76,7 @@
           :is-mask-mode="isMaskMode"
           :brush-size="brushSize"
           :is-eraser="isEraser"
+          :show-painter-grid="showPainterGrid"
           @update-point="handleUpdatePoint"
           @update-points="handleUpdatePoints"
           @drag-start="handleDragStart"
@@ -184,6 +185,7 @@
         :vertical-position="verticalPosition"
         :current-slope="manualSlope"
         :has-art="!!projectStore.currentProject.artAssetUrl"
+        :show-painter-grid="showPainterGrid"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -206,6 +208,11 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @open-matrix-inspector="isMatrixInspectorOpen = true"
+        @open-convolution-filters="isConvolutionFiltersOpen = true"
+        @open-three-scene="isThreeSceneOpen = true"
+        @toggle-painter-grid="showPainterGrid = !showPainterGrid"
+        @open-projector-mode="isProjectorModeOpen = true"
       />
     </div>
 
@@ -226,6 +233,7 @@
         :vertical-position="verticalPosition"
         :current-slope="manualSlope"
         :has-art="!!projectStore.currentProject.artAssetUrl"
+        :show-painter-grid="showPainterGrid"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -248,6 +256,11 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @open-matrix-inspector="isMatrixInspectorOpen = true"
+        @open-convolution-filters="isConvolutionFiltersOpen = true"
+        @open-three-scene="isThreeSceneOpen = true"
+        @toggle-painter-grid="showPainterGrid = !showPainterGrid"
+        @open-projector-mode="isProjectorModeOpen = true"
       />
     </BottomSheet>
 
@@ -257,6 +270,35 @@
       :image-url="projectStore.currentProject.artAssetUrl"
       @close="isImageEditorOpen = false"
       @save="handleSaveEditedArt"
+    />
+
+    <!-- Computer Graphics Modals -->
+    <MatrixInspectorModal
+      :is-open="isMatrixInspectorOpen"
+      :corner-points="projectStore.currentProject.cornerPoints"
+      :canvas-bounds="viewportRef?.bounds || { width: 800, height: 600 }"
+      @close="isMatrixInspectorOpen = false"
+    />
+
+    <ConvolutionFiltersModal
+      :is-open="isConvolutionFiltersOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      @close="isConvolutionFiltersOpen = false"
+      @apply-filter="handleApplyFilter"
+    />
+
+    <ThreeSceneModal
+      :is-open="isThreeSceneOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      :base-photo-url="projectStore.currentProject.basePhotoUrl"
+      @close="isThreeSceneOpen = false"
+    />
+
+    <ProjectorKeystoneModal
+      :is-open="isProjectorModeOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      :corner-points="projectStore.currentProject.cornerPoints"
+      @close="isProjectorModeOpen = false"
     />
 
     <!-- Share Modal -->
@@ -318,6 +360,10 @@ import ViewportCanvas from '../components/editor/ViewportCanvas.vue';
 import Toolbar from '../components/editor/Toolbar.vue';
 import BottomSheet, { SnapState } from '../components/editor/BottomSheet.vue';
 import ImageEditorModal from '../components/editor/ImageEditorModal.vue';
+import MatrixInspectorModal from '../components/editor/MatrixInspectorModal.vue';
+import ConvolutionFiltersModal from '../components/editor/ConvolutionFiltersModal.vue';
+import ThreeSceneModal from '../components/editor/ThreeSceneModal.vue';
+import ProjectorKeystoneModal from '../components/editor/ProjectorKeystoneModal.vue';
 import { apiRequest } from '../services/apiClient.js';
 import { ensureCameraPermissions } from '../services/permissionService.js';
 
@@ -336,6 +382,11 @@ const artScale = ref(0.70);
 const verticalPosition = ref(0);
 const manualSlope = ref<number | null>(null);
 const isImageEditorOpen = ref(false);
+const isMatrixInspectorOpen = ref(false);
+const isConvolutionFiltersOpen = ref(false);
+const isThreeSceneOpen = ref(false);
+const isProjectorModeOpen = ref(false);
+const showPainterGrid = ref(false);
 const directArtInputRef = ref<HTMLInputElement | null>(null);
 
 function handleDirectArtUpload(e: Event) {
@@ -364,6 +415,12 @@ function handleSaveEditedArt(newUrl: string) {
   projectStore.saveProject();
 }
 
+function handleApplyFilter(newArtUrl: string) {
+  projectStore.pushHistory();
+  projectStore.setArtAsset(newArtUrl);
+  projectStore.saveProject();
+}
+
 function handleUpdatePoint(index: number, point: Point2D) {
   projectStore.setCornerPoint(index, point);
 }
@@ -380,121 +437,148 @@ function handleDragEnd() {
   projectStore.saveProject();
 }
 
+function handleMaskUpdated(canvas: HTMLCanvasElement) {
+  maskCanvas.value = canvas;
+  projectStore.currentProject.isDirty = true;
+}
+
+function handleClearMask() {
+  maskCanvas.value = null;
+  viewportRef.value?.clearMask();
+  projectStore.currentProject.isDirty = true;
+}
+
 async function handleToggleCamera() {
-  if (!isCameraActive.value) {
-    const perm = await ensureCameraPermissions();
-    if (!perm.granted) {
-      alert(perm.error || 'Permissão para usar a câmera não concedida.');
-      return;
-    }
-    isCameraActive.value = true;
-  } else {
+  if (isCameraActive.value) {
     isCameraActive.value = false;
+  } else {
+    try {
+      const perm = await ensureCameraPermissions();
+      if (!perm.granted) {
+        alert(perm.error || 'Permissão de câmera necessária.');
+        return;
+      }
+      isCameraActive.value = true;
+    } catch (e: any) {
+      alert(e.message || 'Não foi possível solicitar permissão para a câmera.');
+    }
   }
 }
 
 function handleCaptureCamera() {
-  if (viewportRef.value) {
-    const frame = viewportRef.value.captureCameraFrame();
-    if (frame) {
-      projectStore.pushHistory();
-      projectStore.setBasePhoto(frame);
-      isCameraActive.value = false;
-    }
+  if (!viewportRef.value) return;
+  const dataUrl = viewportRef.value.captureCameraFrame();
+  if (dataUrl) {
+    projectStore.pushHistory();
+    projectStore.setBasePhoto(dataUrl);
+    isCameraActive.value = false;
+    projectStore.saveProject();
   }
 }
 
-function handleCameraFrameCaptured(frame: string) {
-  projectStore.setBasePhoto(frame);
-}
-
-function handleCameraError(errorMsg: string) {
-  alert(errorMsg);
+function handleCameraFrameCaptured(dataUrl: string) {
+  projectStore.pushHistory();
+  projectStore.setBasePhoto(dataUrl);
   isCameraActive.value = false;
+  projectStore.saveProject();
 }
 
-function handleAutoFit() {
-  if (viewportRef.value) {
-    projectStore.pushHistory();
-    viewportRef.value.autoFitWall({
-      scaleFactor: artScale.value,
-      verticalOffset: verticalPosition.value,
-      manualSlope: manualSlope.value
-    });
-  }
-}
-
-function handleApplyPreset(slope: number) {
-  manualSlope.value = slope;
-  if (viewportRef.value) {
-    projectStore.pushHistory();
-    viewportRef.value.applyDirectionPreset(slope);
-  }
-}
-
-function handleUpdateArtScale(val: number) {
-  artScale.value = val;
-  handleAutoFit();
-}
-
-function handleUpdateVerticalPosition(val: number) {
-  verticalPosition.value = val;
-  handleAutoFit();
-}
-
-function handleMaskUpdated(canvas: HTMLCanvasElement) {
-  maskCanvas.value = canvas;
-  projectStore.currentProject.maskCanvas = canvas;
-}
-
-function handleClearMask() {
-  if (viewportRef.value) {
-    viewportRef.value.clearMask();
-  }
-  maskCanvas.value = null;
-  projectStore.currentProject.maskCanvas = null;
+function handleCameraError(error: string) {
+  console.error('Camera error in view:', error);
+  isCameraActive.value = false;
 }
 
 function handleBaseLoaded(url: string) {
   projectStore.pushHistory();
-  projectStore.setBasePhoto(url);
   isCameraActive.value = false;
+  projectStore.setBasePhoto(url);
+  projectStore.saveProject();
 }
 
 function handleArtLoaded(url: string) {
   projectStore.pushHistory();
   projectStore.setArtAsset(url);
+  projectStore.saveProject();
+}
+
+function handleAutoFit() {
+  if (!viewportRef.value) return;
+  viewportRef.value.autoFitWall({
+    scaleFactor: artScale.value,
+    manualSlope: manualSlope.value,
+    verticalOffset: verticalPosition.value
+  });
+}
+
+function handleApplyPreset(slope: number) {
+  manualSlope.value = slope;
+  if (!viewportRef.value) return;
+  viewportRef.value.applyDirectionPreset(slope);
+}
+
+function handleUpdateArtScale(scale: number) {
+  artScale.value = scale;
+  handleAutoFit();
+}
+
+function handleUpdateVerticalPosition(pos: number) {
+  verticalPosition.value = pos;
+  handleAutoFit();
 }
 
 async function handleSave() {
-  await projectStore.saveProject();
+  try {
+    await projectStore.saveProject();
+    alert('Mural salvo com sucesso!');
+  } catch (err) {
+    console.error('Failed to save project', err);
+    alert('Erro ao salvar mural');
+  }
 }
 
 async function handleShare() {
-  if (!projectStore.currentProject.id) {
-    await projectStore.saveProject();
-  }
-  let targetUrl = window.location.href;
-  if (projectStore.currentProject.id) {
+  await projectStore.saveProject();
+  let projectId = projectStore.currentProject.id;
+
+  if (!projectId || projectId.startsWith('local_')) {
     try {
-      const res = await apiRequest(`/projects/${projectStore.currentProject.id}/share`, {
+      const created = await apiRequest('/projects', {
         method: 'POST',
-        body: JSON.stringify({ expiresInDays: 30 })
+        body: JSON.stringify({
+          title: projectStore.currentProject.title,
+          cornerPoints: projectStore.currentProject.cornerPoints,
+          blendMode: projectStore.currentProject.blendMode,
+          opacity: projectStore.currentProject.opacity,
+          brightness: projectStore.currentProject.brightness,
+          contrast: projectStore.currentProject.contrast
+        })
       });
-      targetUrl = `${window.location.origin}/share/${res.token}`;
-    } catch (err) {
-      console.warn('API share link generation skipped, using current url', err);
+      projectId = created.id;
+      projectStore.currentProject.id = projectId;
+    } catch {
+      alert('É necessário sincronizar com o servidor antes de compartilhar.');
+      return;
     }
   }
 
-  shareUrl.value = targetUrl;
+  let token = '';
+  try {
+    const res = await apiRequest<{ shareUrl?: string; token?: string }>(`/projects/${projectId}/share`, {
+      method: 'POST'
+    });
+    token = res.token || '';
+  } catch {
+    token = projectId || '';
+  }
+
+  shareUrl.value = `${window.location.origin}/share/${token}`;
 
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({
-        title: projectStore.currentProject.title || 'Muralis — Simulação',
-        text: 'Confira a simulação de mural na fachada:',
-        url: targetUrl
+        title: projectStore.currentProject.title || 'Muralis',
+        text: 'Confira a simulação do mural projetado:',
+        url: shareUrl.value
       });
       return;
     } catch (err: any) {
@@ -523,7 +607,6 @@ async function handleExport() {
     const safeTitle = (projectStore.currentProject.title || 'mural').toLowerCase().replace(/\s+/g, '-');
     const fileName = `${safeTitle}-muralis.png`;
 
-    // Native file sharing if supported
     try {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
@@ -542,7 +625,6 @@ async function handleExport() {
       console.warn('Native file share failed or unsupported, downloading file', shareErr);
     }
 
-    // Standard download
     const link = document.createElement('a');
     link.download = fileName;
     link.href = dataUrl;
@@ -564,7 +646,6 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
 
   const isCtrlOrMeta = e.ctrlKey || e.metaKey;
 
-  // Undo / Redo
   if (isCtrlOrMeta && !e.shiftKey && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     projectStore.undo();
@@ -576,21 +657,18 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
     return;
   }
 
-  // Escape: deselect artwork
   if (e.key === 'Escape') {
     e.preventDefault();
     viewportRef.value?.deselect();
     return;
   }
 
-  // Delete / Backspace: clear mask only when mask mode is active
   if ((e.key === 'Delete' || e.key === 'Backspace') && isMaskMode.value) {
     e.preventDefault();
     handleClearMask();
     return;
   }
 
-  // Arrow keys: move art (1px, 10px with Shift)
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
     if (!projectStore.currentProject.cornerPoints || !projectStore.currentProject.artAssetUrl) return;
     e.preventDefault();
@@ -618,7 +696,6 @@ onMounted(async () => {
     await projectStore.loadProject(projectId);
   }
 
-  // Camera active by default if no static base photo is already loaded
   if (!projectStore.currentProject.basePhotoUrl) {
     try {
       const perm = await ensureCameraPermissions();
