@@ -4,7 +4,6 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from app.core.config import settings
 
-# Setup local storage directory
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 s3_client = None
@@ -50,7 +49,6 @@ def upload_file(file_bytes: bytes, storage_key: str, content_type: str):
             ContentType=content_type
         )
     else:
-        # Local file system storage
         file_path = os.path.join(settings.UPLOAD_DIR, storage_key.replace("/", "_"))
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as f:
@@ -67,7 +65,6 @@ def generate_presigned_url(storage_key: str, expires_in: int = 86400, asset_id: 
         except Exception as e:
             print(f"Error generating presigned url: {e}")
     
-    # Local fallback URL pointing to the streaming endpoint
     if asset_id:
         return f"http://localhost:{settings.PORT}/assets/{asset_id}/stream"
     return f"http://localhost:{settings.PORT}/uploads/{storage_key.replace('/', '_')}"

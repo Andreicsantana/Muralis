@@ -5,19 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.session import engine, Base
-import app.models  # Ensure all models are registered
+import app.models
 from app.services.storage import ensure_bucket_exists
 from app.api.routes import auth, assets, projects, share
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables if they do not exist
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"Database initialization warning: {e}")
 
-    # Ensure MinIO/S3 bucket exists
     try:
         ensure_bucket_exists()
     except Exception as e:
@@ -32,7 +30,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,7 +38,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
 app.include_router(auth.router)
 app.include_router(assets.router)
 app.include_router(projects.router)

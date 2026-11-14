@@ -4,7 +4,7 @@
     class="absolute inset-0 pointer-events-none overflow-visible select-none"
     @wheel="handleWheel"
   >
-    <!-- Bounding Polygon Guide -->
+
     <svg class="w-full h-full pointer-events-none">
       <polygon
         :points="polygonPoints"
@@ -15,7 +15,7 @@
         class="pointer-events-auto cursor-move touch-none transition-colors hover:fill-[rgba(238,90,60,0.16)]"
         @pointerdown="startMoveOrPinch"
       />
-      <!-- Diagonal Guide Crosslines -->
+
       <line
         v-if="screenPoints.length === 4"
         :x1="screenPoints[0].x"
@@ -40,7 +40,6 @@
       />
     </svg>
 
-    <!-- Center Move Handle: Stencil Target -->
     <div
       v-if="centerPoint.x > 0 && centerPoint.y > 0"
       class="absolute -ml-6 -mt-6 w-12 h-12 rounded-[2px] bg-[#262523] border border-[#55514b] shadow-md cursor-move pointer-events-auto flex items-center justify-center transition-transform hover:scale-105 active:scale-95 group touch-none z-30"
@@ -60,7 +59,6 @@
       </svg>
     </div>
 
-    <!-- 4 Corner Handles: Squares in paper with dark border (Min 44x44px touch area) -->
     <div
       v-for="(point, index) in screenPoints"
       :key="index"
@@ -69,7 +67,7 @@
       @pointerdown="(e) => startCornerDrag(index, e)"
       :title="`Vértice ${index + 1}`"
     >
-      <!-- Visual handle square: 12px desktop / 16px touch -->
+
       <div class="w-3.5 h-3.5 md:w-3 md:h-3 bg-[#ece6d8] border border-[#151413] shadow-sm rounded-[1px] group-hover:scale-125 transition-transform"></div>
     </div>
   </div>
@@ -174,7 +172,6 @@ function startCornerDrag(index: number, event: PointerEvent) {
   window.addEventListener('pointerup', onPointerUp);
 }
 
-// Multi-touch gestures: 1-finger move drag, 2-finger pinch-to-scale
 const activePointers = new Map<number, { x: number; y: number }>();
 let initialQuad: [Point2D, Point2D, Point2D, Point2D] | null = null;
 let initialDistance = 0;
@@ -215,7 +212,7 @@ function startMoveOrPinch(event: PointerEvent) {
     if (width === 0 || height === 0 || !initialQuad) return;
 
     if (activePointers.size === 1) {
-      // 1-finger drag moves the entire artwork
+
       const dx = (moveEvent.clientX - startMoveX) / width;
       const dy = (moveEvent.clientY - startMoveY) / height;
 
@@ -226,7 +223,7 @@ function startMoveOrPinch(event: PointerEvent) {
 
       emit('updatePoints', newPoints);
     } else if (activePointers.size >= 2 && initialDistance > 10) {
-      // 2-finger pinch scales artwork around center
+
       const pts = Array.from(activePointers.values());
       const currentDistance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       const ratio = currentDistance / initialDistance;

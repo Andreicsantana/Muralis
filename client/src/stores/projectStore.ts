@@ -4,6 +4,7 @@ import { Point2D } from '../engine/homography.js';
 import { BlendMode } from '../engine/blendEngine.js';
 import { apiRequest } from '../services/apiClient.js';
 import { db } from '../services/offlineDb.js';
+import { useAuthStore } from './authStore.js';
 
 export interface ProjectState {
   id: string | null;
@@ -134,13 +135,32 @@ export const useProjectStore = defineStore('project', () => {
     historyIndex.value = -1;
   }
 
-  async function saveProject() {
-    const p = currentProject.value;
-    const projectId = p.id || ('local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
-    p.id = projectId;
-    if (!p.id) {
-      p.id = 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  async function toPersistentUrl(url: string | null): Promise<string | null> {
+    if (!url || !url.startsWith('blob:')) {
+      return url;
     }
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return url;
+    }
+  }
+
+  async function saveProject(): Promise<string> {
+    const authStore = useAuthStore();
+    const p = currentProject.value;
+    let projectId = p.id || ('local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+    p.id = projectId;
+
+    p.basePhotoUrl = await toPersistentUrl(p.basePhotoUrl);
+    p.artAssetUrl = await toPersistentUrl(p.artAssetUrl);
 
     const payload = {
       title: p.title,
@@ -152,25 +172,29 @@ export const useProjectStore = defineStore('project', () => {
     };
 
     let savedRemote = false;
-    try {
-      if (p.id.startsWith('local_')) {
-        const created = await apiRequest('/projects', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        p.id = created.id;
-      } else {
-        await apiRequest(`/projects/${p.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload)
-        });
+    if (authStore.isAuthenticated) {
+      try {
+        if (projectId.startsWith('local_')) {
+          const created = await apiRequest('/projects', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          await db.projects.delete(projectId);
+          projectId = created.id;
+          p.id = projectId;
+        } else {
+          await apiRequest(`/projects/${projectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload)
+          });
+        }
+        savedRemote = true;
+      } catch {
+        savedRemote = false;
       }
-      savedRemote = true;
-    } catch {
-      savedRemote = false;
     }
 
-    let maskData: string | null = null;
+    let maskData: string | undefined = undefined;
     if (p.maskCanvas) {
       try {
         maskData = p.maskCanvas.toDataURL();
@@ -183,7 +207,7 @@ export const useProjectStore = defineStore('project', () => {
       basePhotoUrl: p.basePhotoUrl,
       artAssetUrl: p.artAssetUrl,
       maskCanvasData: maskData,
-      cornerPoints: p.cornerPoints,
+      cornerPoints: p.cornerPoints.map((pt) => ({ x: pt.x, y: pt.y })),
       blendMode: p.blendMode,
       opacity: p.opacity,
       brightness: p.brightness,
@@ -193,31 +217,58 @@ export const useProjectStore = defineStore('project', () => {
     });
 
     p.isDirty = false;
+    return projectId;
+  }
+
+  async function createProject(title?: string): Promise<string> {
+    resetProject();
+    if (title && title.trim()) {
+      currentProject.value.title = title.trim();
+    }
+    return await saveProject();
+  }
+
+  async function duplicateProject(id: string): Promise<string | null> {
+    const existing = await db.projects.get(id);
+    if (!existing) return null;
+
+    const newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    await db.projects.put({
+      ...existing,
+      id: newId,
+      title: `${existing.title || 'Mural'} (Cópia)`,
+      synced: false,
+      updatedAt: Date.now()
+    });
+    return newId;
   }
 
   async function loadProject(id: string) {
-    try {
-      const p = await apiRequest(`/projects/${id}`);
-      currentProject.value = {
-        id: p.id,
-        title: p.title || 'Mural',
-        basePhotoUrl: p.basePhoto?.url || null,
-        artAssetUrl: p.artAsset?.url || null,
-        maskCanvas: null,
-        cornerPoints: p.cornerPoints || [
-          { x: 0.15, y: 0.15 },
-          { x: 0.85, y: 0.15 },
-          { x: 0.85, y: 0.85 },
-          { x: 0.15, y: 0.85 }
-        ],
-        blendMode: p.blendMode || 'multiply',
-        opacity: p.opacity ?? 0.9,
-        brightness: p.brightness ?? 1.0,
-        contrast: p.contrast ?? 1.0,
-        isDirty: false
-      };
-      return;
-    } catch {}
+    const authStore = useAuthStore();
+    if (authStore.isAuthenticated && !id.startsWith('local_')) {
+      try {
+        const p = await apiRequest(`/projects/${id}`);
+        currentProject.value = {
+          id: p.id,
+          title: p.title || 'Mural',
+          basePhotoUrl: p.basePhoto?.url || null,
+          artAssetUrl: p.artAsset?.url || null,
+          maskCanvas: null,
+          cornerPoints: p.cornerPoints || [
+            { x: 0.15, y: 0.15 },
+            { x: 0.85, y: 0.15 },
+            { x: 0.85, y: 0.85 },
+            { x: 0.15, y: 0.85 }
+          ],
+          blendMode: p.blendMode || 'multiply',
+          opacity: p.opacity ?? 0.9,
+          brightness: p.brightness ?? 1.0,
+          contrast: p.contrast ?? 1.0,
+          isDirty: false
+        };
+        return;
+      } catch {}
+    }
 
     const offlineP = await db.projects.get(id);
     if (offlineP) {
@@ -269,6 +320,8 @@ export const useProjectStore = defineStore('project', () => {
     setContrast,
     resetProject,
     saveProject,
+    createProject,
+    duplicateProject,
     loadProject
   };
 });

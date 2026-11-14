@@ -5,22 +5,17 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Muralis API"
     PORT: int = 3000
     
-    # Database: SQLite padrão (cria muralis.db local sem precisar configurar nada)
-    # Para usar PostgreSQL: postgresql://postgres:senha@localhost:5432/muralis_db
     DATABASE_URL: str = "sqlite:///./muralis.db"
     
-    # Security
     JWT_SECRET: str = "muralis_super_secret_jwt_key_2026"
     REFRESH_SECRET: str = "muralis_super_secret_refresh_key_2026"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 1
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
     
-    # Storage (local salva direto na pasta uploads/ sem precisar de S3/MinIO)
     STORAGE_DRIVER: str = "local"
     UPLOAD_DIR: str = "uploads"
     
-    # S3 / MinIO Storage (quando STORAGE_DRIVER='s3')
     S3_BUCKET: str = "muralis-assets"
     S3_REGION: str = "us-east-1"
     S3_ENDPOINT: str = "http://localhost:9000"

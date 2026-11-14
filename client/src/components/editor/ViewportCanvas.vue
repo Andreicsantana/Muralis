@@ -15,9 +15,8 @@
         muted
       ></video>
 
-      <!-- Selection & Perspective Handles (Visible only when selected) -->
       <CornerHandles
-        v-if="showHandles && isSelected && bounds.width > 0 && artImage && !isMaskMode"
+        v-if="showHandles && isSelected && bounds.width > 0 && artImage && !isMaskMode && !isMeasureMode"
         :corner-points="cornerPoints"
         :canvas-bounds="bounds"
         @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
@@ -26,7 +25,6 @@
         @drag-end="() => $emit('dragEnd')"
       />
 
-      <!-- Occlusion Mask Brush Overlay (Overlayed exactly on the canvas) -->
       <MaskBrush
         v-if="isMaskMode"
         ref="maskBrushRef"
@@ -36,9 +34,17 @@
         @mask-updated="(canvas) => $emit('maskUpdated', canvas)"
       />
 
-      <!-- Quick Hint when deselected -->
+      <WallMeasureOverlay
+        v-if="isMeasureMode || (measurePoints && measurePoints.length === 2)"
+        :is-active="!!isMeasureMode"
+        :points="measurePoints || []"
+        :pixels-per-meter="pixelsPerMeter ?? null"
+        :canvas-bounds="{ width: bounds.width, height: bounds.height, left: 0, top: 0 }"
+        @update:points="(pts) => $emit('updateMeasurePoints', pts)"
+      />
+
       <div
-        v-if="showHandles && !isSelected && artImage && !isMaskMode"
+        v-if="showHandles && !isSelected && artImage && !isMaskMode && !isMeasureMode"
         class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-concrete-800 border border-concrete-600 text-concrete-300 font-mono text-[10px] rounded-xs pointer-events-none shadow-subtle"
       >
         Toque na arte para selecionar
@@ -54,6 +60,7 @@ import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../e
 import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane } from '../../engine/autoFit.js';
 import CornerHandles from './CornerHandles.vue';
 import MaskBrush from './MaskBrush.vue';
+import WallMeasureOverlay from './WallMeasureOverlay.vue';
 
 const props = defineProps<{
   basePhotoUrl: string | null;
@@ -69,6 +76,9 @@ const props = defineProps<{
   isMaskMode?: boolean;
   brushSize?: number;
   isEraser?: boolean;
+  isMeasureMode?: boolean;
+  measurePoints?: Point2D[];
+  pixelsPerMeter?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -79,6 +89,7 @@ const emit = defineEmits<{
   (e: 'cameraFrameCaptured', dataUrl: string): void;
   (e: 'cameraError', error: string): void;
   (e: 'maskUpdated', canvas: HTMLCanvasElement): void;
+  (e: 'updateMeasurePoints', points: Point2D[]): void;
 }>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
@@ -172,7 +183,6 @@ async function startCamera() {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     mediaStream.value = stream;
 
-    // Listen to track.onended (e.g. OS/browser terminates track when file picker or app backgrounded)
     stream.getVideoTracks().forEach(track => {
       track.onended = () => {
         if (props.isCameraActive && document.visibilityState === 'visible') {
@@ -466,6 +476,7 @@ defineExpose({
   autoFitWall,
   applyDirectionPreset,
   clearMask,
+  bounds,
   select: () => (isSelected.value = true),
   deselect: () => (isSelected.value = false)
 });

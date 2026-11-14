@@ -1,26 +1,21 @@
 import { Point2D } from './homography.js';
 
 export interface WallPlane {
-  topLine: { m: number; c: number };    // y = m*x + c (normalized 0..1)
-  botLine: { m: number; c: number };    // y = m*x + c (normalized 0..1)
-  wallTopY: number;                     // Average top Y (0..1)
-  wallBotY: number;                     // Average bottom Y (0..1)
-  slope: number;                        // Dominant perspective slope
+  topLine: { m: number; c: number };
+  botLine: { m: number; c: number };
+  wallTopY: number;
+  wallBotY: number;
+  slope: number;
   confidence: number;
 }
 
-/**
- * Intelligent Wall Perspective & Boundary Detector
- * Detects true wall boundaries (separating sky/trees and ground) and fits
- * the artwork strictly within the detected wall face with true perspective angle.
- */
 export function calculateAutoFitCorners(
   baseElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null,
   artElement: HTMLImageElement | HTMLCanvasElement | null,
   options: {
-    scaleFactor?: number;    // 0.3 to 1.0 (default 0.75 of wall height)
+    scaleFactor?: number;
     manualSlope?: number | null;
-    verticalOffset?: number; // -0.5 (top) to 0.5 (bottom), default 0 (centered on wall)
+    verticalOffset?: number;
   } = {}
 ): [Point2D, Point2D, Point2D, Point2D] {
   const scale = options.scaleFactor ?? 0.70;
@@ -46,28 +41,23 @@ export function calculateAutoFitCorners(
   const artW = ('naturalWidth' in artElement && artElement.naturalWidth ? artElement.naturalWidth : artElement.width) || 400;
   const artH = ('naturalHeight' in artElement && artElement.naturalHeight ? artElement.naturalHeight : artElement.height) || 400;
 
-  // 1. Detect wall structure and dominant lines
   const wall = detectWallPlane(baseElement);
 
   const slope = options.manualSlope !== null && options.manualSlope !== undefined
     ? options.manualSlope
     : wall.slope;
 
-  // 2. Define vertical bounds strictly inside the wall
   const wallTopY = wall.wallTopY;
   const wallBotY = wall.wallBotY;
   const wallHeight = Math.max(0.2, wallBotY - wallTopY);
 
-  // Artwork height inside wall
   const targetArtHeight = wallHeight * scale;
   const wallCenterY = (wallTopY + wallBotY) / 2 + verticalOffset * (wallHeight * 0.4);
 
-  // Compute artwork width matching aspect ratio
   const baseAspect = baseW / baseH;
   const artAspect = artW / artH;
   let targetArtWidth = (targetArtHeight * artAspect) / baseAspect;
 
-  // Limit width to 85% of image width
   if (targetArtWidth > 0.85) {
     targetArtWidth = 0.85;
   }
@@ -79,18 +69,12 @@ export function calculateAutoFitCorners(
   const xLeft = Math.max(0.05, centerX - halfW);
   const xRight = Math.min(0.95, centerX + halfW);
 
-  // Calculate top and bottom Y coordinates considering the wall slope
-  // When slope > 0: wall slopes downwards to the right (left is higher, right is lower)
-  // When slope < 0: wall slopes upwards to the right (left is lower, right is higher)
-  // Vanishing compression: the farther side is also vertically compressed (perspective foreshortening)
   const leftDx = xLeft - centerX;
   const rightDx = xRight - centerX;
 
   const leftSlopeOffset = leftDx * slope;
   const rightSlopeOffset = rightDx * slope;
 
-  // Foreshortening factor: farther side is shorter, closer side is taller
-  // Average height (safeLeftHalfH + safeRightHalfH) / 2 remains exactly equal to halfH
   const foreshortening = slope * 0.35;
   const leftHeightRatio = 1 + foreshortening;
   const rightHeightRatio = 1 - foreshortening;
@@ -98,7 +82,6 @@ export function calculateAutoFitCorners(
   const safeLeftHalfH = halfH * Math.max(0.4, Math.min(1.6, leftHeightRatio));
   const safeRightHalfH = halfH * Math.max(0.4, Math.min(1.6, rightHeightRatio));
 
-  // Top-Left (0), Top-Right (1), Bottom-Right (2), Bottom-Left (3)
   const p0: Point2D = {
     x: xLeft,
     y: Math.max(0.02, Math.min(0.95, (wallCenterY + leftSlopeOffset) - safeLeftHalfH))
@@ -122,19 +105,14 @@ export function calculateAutoFitCorners(
   return [p0, p1, p2, p3];
 }
 
-/**
- * Adjusts the perspective direction (left, frontal, right) of an existing artwork quad
- * WITHOUT changing its overall size, dimensions, aspect ratio, or position on the wall.
- */
 export function applyDirectionToQuad(
   currentQuad: [Point2D, Point2D, Point2D, Point2D],
   slope: number
 ): [Point2D, Point2D, Point2D, Point2D] {
-  // 1. Compute current center of the artwork
+
   const cx = (currentQuad[0].x + currentQuad[1].x + currentQuad[2].x + currentQuad[3].x) / 4;
   const cy = (currentQuad[0].y + currentQuad[1].y + currentQuad[2].y + currentQuad[3].y) / 4;
 
-  // 2. Compute current average width and height
   const topW = Math.hypot(currentQuad[1].x - currentQuad[0].x, currentQuad[1].y - currentQuad[0].y);
   const botW = Math.hypot(currentQuad[2].x - currentQuad[3].x, currentQuad[2].y - currentQuad[3].y);
   const avgW = (topW + botW) / 2;
@@ -146,12 +124,10 @@ export function applyDirectionToQuad(
   const halfW = Math.max(0.04, Math.min(0.48, avgW / 2));
   const halfH = Math.max(0.04, Math.min(0.48, avgH / 2));
 
-  // 3. Vanishing foreshortening preserving total average height
   const foreshortening = slope * 0.35;
   const leftHalfH = halfH * Math.max(0.4, Math.min(1.6, 1 + foreshortening));
   const rightHalfH = halfH * Math.max(0.4, Math.min(1.6, 1 - foreshortening));
 
-  // 4. Slope offsets for perspective slant
   const leftSlopeOffset = -halfW * slope;
   const rightSlopeOffset = halfW * slope;
 
@@ -181,10 +157,6 @@ export function applyDirectionToQuad(
   return [p0, p1, p2, p3];
 }
 
-/**
- * Uses Hough transform and line segment analysis to filter out organic noise (trees, sky)
- * and find the true structural lines of the wall plane.
- */
 export function detectWallPlane(
   source: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement
 ): WallPlane {
@@ -211,13 +183,11 @@ export function detectWallPlane(
     const imgData = ctx.getImageData(0, 0, w, h);
     const data = imgData.data;
 
-    // 1. Grayscale conversion with Gaussian blur approximation
     const gray = new Float32Array(w * h);
     for (let i = 0, j = 0; i < data.length; i += 4, j++) {
       gray[j] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
     }
 
-    // 2. Sobel edge extraction with magnitude and angle
     const edges: Array<{ x: number; y: number; angle: number; mag: number }> = [];
     const minMag = 35;
 
@@ -235,16 +205,14 @@ export function detectWallPlane(
 
         const mag = Math.sqrt(gx * gx + gy * gy);
         if (mag > minMag) {
-          // Angle of the edge line (perpendicular to gradient)
+
           const lineAngle = Math.atan2(gx, -gy);
           edges.push({ x, y, angle: lineAngle, mag });
         }
       }
     }
 
-    // 3. Line Accumulator for straight perspective segments
-    // Focus on near-horizontal and diagonal perspective lines (-60 deg to +60 deg)
-    const angleBins = 36; // -45 to +45 deg in 2.5 deg steps
+    const angleBins = 36;
     const binWeights = new Float32Array(angleBins);
     const binSlopes = new Float32Array(angleBins);
 
@@ -255,7 +223,7 @@ export function detectWallPlane(
 
     for (const edge of edges) {
       const deg = (edge.angle * 180) / Math.PI;
-      // Filter out pure vertical lines (like pillars or tree trunks) to isolate wall horizontal diagonals
+
       if (Math.abs(deg) <= 45) {
         const bin = Math.floor(((deg + 45) / 90) * angleBins);
         if (bin >= 0 && bin < angleBins) {
@@ -264,7 +232,6 @@ export function detectWallPlane(
       }
     }
 
-    // Find dominant angle
     let maxBin = Math.floor(angleBins / 2);
     let maxWeight = 0;
     for (let i = 0; i < angleBins; i++) {
@@ -276,14 +243,11 @@ export function detectWallPlane(
 
     const dominantSlope = binSlopes[maxBin];
 
-    // 4. Find the true top and bottom boundaries of the wall
-    // Sort horizontal slice intensities to find where the sky/trees end and the wall starts
     const rowEdgeCount = new Float32Array(h);
     for (const edge of edges) {
       rowEdgeCount[edge.y] += edge.mag;
     }
 
-    // Wall top usually occurs in the upper 20% - 55% of the frame (below trees)
     let detectedTopY = 0.28;
     let maxTopScore = 0;
     for (let y = Math.floor(h * 0.15); y < Math.floor(h * 0.55); y++) {
@@ -293,7 +257,6 @@ export function detectWallPlane(
       }
     }
 
-    // Wall bottom usually occurs in the lower 65% - 95% of the frame
     let detectedBotY = 0.85;
     let maxBotScore = 0;
     for (let y = Math.floor(h * 0.65); y < Math.floor(h * 0.95); y++) {
@@ -303,7 +266,6 @@ export function detectWallPlane(
       }
     }
 
-    // Add safety margins to prevent artwork ever poking out of wall
     const safeTopY = Math.min(0.40, Math.max(0.18, detectedTopY + 0.05));
     const safeBotY = Math.max(0.70, Math.min(0.92, detectedBotY - 0.04));
 

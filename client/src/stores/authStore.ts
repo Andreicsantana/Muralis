@@ -10,9 +10,10 @@ export interface User {
 }
 
 export const useAuthStore = defineStore('auth', () => {
+  const hasStorage = typeof localStorage !== 'undefined';
   const user = ref<User | null>(null);
-  const token = ref<string | null>(localStorage.getItem('muralis_token'));
-  const refreshToken = ref<string | null>(localStorage.getItem('muralis_refresh_token'));
+  const token = ref<string | null>(hasStorage ? localStorage.getItem('muralis_token') : null);
+  const refreshToken = ref<string | null>(hasStorage ? localStorage.getItem('muralis_refresh_token') : null);
   const isAuthenticated = computed(() => !!token.value);
 
   function setAuth(userData: User, authToken: string, newRefreshToken: string) {
@@ -20,8 +21,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = authToken;
     refreshToken.value = newRefreshToken;
 
-    localStorage.setItem('muralis_token', authToken);
-    localStorage.setItem('muralis_refresh_token', newRefreshToken);
+    if (hasStorage) {
+      localStorage.setItem('muralis_token', authToken);
+      localStorage.setItem('muralis_refresh_token', newRefreshToken);
+    }
   }
 
   function clearAuth() {
@@ -29,8 +32,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null;
     refreshToken.value = null;
 
-    localStorage.removeItem('muralis_token');
-    localStorage.removeItem('muralis_refresh_token');
+    if (hasStorage) {
+      localStorage.removeItem('muralis_token');
+      localStorage.removeItem('muralis_refresh_token');
+    }
   }
 
   async function fetchCurrentUser() {

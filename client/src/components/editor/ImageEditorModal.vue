@@ -4,7 +4,7 @@
     class="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-2 sm:p-4 select-none"
   >
     <div class="bg-concrete-800 border-2 border-concrete-600 rounded-xs shadow-brutalist max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden">
-      <!-- Modal Header -->
+
       <div class="h-12 bg-concrete-900 border-b-2 border-paint px-4 flex items-center justify-between shrink-0">
         <div class="flex items-center space-x-2">
           <span class="w-1.5 h-3.5 bg-paint"></span>
@@ -25,9 +25,8 @@
         </button>
       </div>
 
-      <!-- Controls Bar -->
       <div class="bg-concrete-800 border-b border-concrete-600 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <!-- Rotate & Flip -->
+
         <div class="flex items-center space-x-1 sm:space-x-2">
           <button
             type="button"
@@ -69,7 +68,6 @@
           </button>
         </div>
 
-        <!-- Crop Aspect Ratio -->
         <div class="flex items-center space-x-1">
           <span class="text-[11px] font-mono text-concrete-300 mr-1 hidden md:inline">Corte:</span>
           <button
@@ -85,7 +83,6 @@
         </div>
       </div>
 
-      <!-- Preview Canvas & Interactive Crop Overlay -->
       <div
         ref="previewContainerRef"
         class="flex-1 bg-concrete-950 overflow-hidden relative flex items-center justify-center p-4 min-h-[260px]"
@@ -102,7 +99,6 @@
             class="block w-full h-full pointer-events-none rounded-xs"
           ></canvas>
 
-          <!-- Dimmer Outside Crop Box -->
           <svg class="absolute inset-0 w-full h-full pointer-events-none z-10">
             <defs>
               <mask id="cropMask">
@@ -119,7 +115,6 @@
             <rect width="100%" height="100%" fill="rgba(15, 14, 13, 0.72)" mask="url(#cropMask)" />
           </svg>
 
-          <!-- Interactive Crop Box -->
           <div
             class="absolute border border-paint z-20 cursor-move"
             :style="{
@@ -130,7 +125,7 @@
             }"
             @pointerdown="startCropMove"
           >
-            <!-- Rule-of-thirds grid -->
+
             <div class="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
               <div class="border-r border-b border-paint/40"></div>
               <div class="border-r border-b border-paint/40"></div>
@@ -143,7 +138,6 @@
               <div></div>
             </div>
 
-            <!-- Resize Handles (Paper squares with dark border) -->
             <div
               class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-paper border border-paint-dark rounded-xs cursor-nwse-resize z-30"
               @pointerdown.stop="(e) => startResize('tl', e)"
@@ -164,7 +158,6 @@
         </div>
       </div>
 
-      <!-- Footer Actions -->
       <div class="h-14 bg-concrete-900 border-t-2 border-concrete-600 px-4 flex items-center justify-between shrink-0">
         <button
           type="button"

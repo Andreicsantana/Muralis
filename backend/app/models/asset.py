@@ -9,7 +9,7 @@ class Asset(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    type = Column(String(50), nullable=False)  # 'photo', 'art', 'mask', 'export'
+    type = Column(String(50), nullable=False)
     storage_key = Column(String(512), nullable=False)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)

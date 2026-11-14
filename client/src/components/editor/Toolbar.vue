@@ -1,6 +1,6 @@
 <template>
   <aside class="w-full md:w-80 bg-concrete-800 border-t-2 md:border-t-0 md:border-l-2 border-concrete-600 flex flex-col h-full overflow-y-auto text-sm select-none pb-12 md:pb-4">
-    <!-- Header: Toolbox -->
+
     <div class="p-3 md:p-4 border-b-2 border-concrete-600 flex items-center justify-between bg-concrete-900 sticky top-0 z-20">
       <div>
         <span class="text-[10px] font-mono text-paint font-bold uppercase tracking-wider block">
@@ -34,7 +34,7 @@
     </div>
 
     <div class="p-4 space-y-6 flex-1">
-      <!-- 01 SUA ARTE (PRIORIDADE MÁXIMA) -->
+
       <div class="space-y-3">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">01</span>
@@ -74,7 +74,6 @@
             </button>
           </div>
 
-          <!-- Edit / Crop Artwork Button -->
           <button
             v-if="hasArt"
             type="button"
@@ -87,7 +86,6 @@
         </div>
       </div>
 
-      <!-- 02 PERSPECTIVA DA ARTE -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">02</span>
@@ -104,7 +102,6 @@
           <span>Auto-ajustar ao muro</span>
         </button>
 
-        <!-- Quick Direction Presets -->
         <div class="space-y-1">
           <span class="text-[11px] font-mono text-concrete-300 uppercase">Fuga da parede:</span>
           <div class="grid grid-cols-3 gap-1.5">
@@ -150,7 +147,6 @@
           </div>
         </div>
 
-        <!-- Scale & Position Sliders -->
         <div class="space-y-2.5 pt-1">
           <div class="space-y-1">
             <div class="flex justify-between text-xs font-mono text-concrete-300">
@@ -186,7 +182,6 @@
         </div>
       </div>
 
-      <!-- 03 TINTA & MISTURA -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">03</span>
@@ -260,7 +255,6 @@
         </div>
       </div>
 
-      <!-- 04 MURO OU FACHADA (FUNDO) -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">04</span>
@@ -272,7 +266,6 @@
             Parede de Fundo (Câmera ou Foto)
           </span>
 
-          <!-- Live Camera Button -->
           <div class="flex items-center space-x-2">
             <button
               type="button"
@@ -296,7 +289,6 @@
             </button>
           </div>
 
-          <!-- Wall Photo Upload -->
           <div class="mt-2 flex items-center space-x-2">
             <input
               ref="baseFileInputRef"
@@ -325,7 +317,6 @@
         </div>
       </div>
 
-      <!-- 05 MÁSCARA DE OCLUSÃO -->
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="flex items-center justify-between">
           <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
@@ -403,9 +394,90 @@
           </button>
         </div>
       </div>
+
+      <div class="space-y-3 border-t border-concrete-600 pt-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-mono font-bold text-paint">06</span>
+            <h3 class="text-xs font-mono font-bold uppercase tracking-wider text-paper">
+              Medição de Muro
+            </h3>
+          </div>
+          <button
+            type="button"
+            class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase rounded-xs border transition-colors flex items-center space-x-1"
+            :class="
+              isMeasureMode
+                ? 'bg-paint border-paint text-paint-dark'
+                : 'bg-concrete-700 border-concrete-600 text-concrete-300 hover:text-paper'
+            "
+            @click="$emit('toggleMeasureMode')"
+          >
+            <RulerIcon class="w-3 h-3" />
+            <span>{{ isMeasureMode ? 'Ativo' : 'Medir' }}</span>
+          </button>
+        </div>
+
+        <div v-if="isMeasureMode || pixelsPerMeter" class="space-y-3 bg-concrete-900 p-3 rounded-xs border border-concrete-600">
+          <p class="text-[11px] font-mono text-concrete-300 leading-relaxed">
+            Arraste os pontos A e B sobre uma referência conhecida no muro e informe o comprimento real.
+          </p>
+
+          <div class="flex items-center space-x-2">
+            <input
+              type="number"
+              min="0.05"
+              step="0.05"
+              :value="referenceMeters"
+              class="w-24 px-2 py-1.5 bg-concrete-800 border border-concrete-600 focus:border-paint rounded-xs text-base md:text-xs font-mono text-paper focus:outline-none"
+              aria-label="Comprimento de referência em metros"
+              @input="(e) => $emit('update:referenceMeters', parseFloat((e.target as HTMLInputElement).value) || 0)"
+            />
+            <span class="text-xs font-mono text-concrete-300">m</span>
+            <button
+              type="button"
+              :disabled="!hasMeasureLine || !referenceMeters || referenceMeters <= 0"
+              class="flex-1 py-1.5 px-2 bg-paint hover:bg-paint-hover disabled:opacity-40 text-paint-dark text-xs font-mono font-black uppercase rounded-xs transition-colors"
+              @click="$emit('calibrateMeasure')"
+            >
+              Calibrar
+            </button>
+          </div>
+
+          <div v-if="pixelsPerMeter" class="space-y-1.5 border-t border-concrete-700 pt-2 text-xs font-mono">
+            <div class="flex justify-between text-concrete-300">
+              <span>Linha A-B:</span>
+              <span class="text-paper font-bold">{{ measuredLineText }}</span>
+            </div>
+            <template v-if="quadMeasurement">
+              <div class="flex justify-between text-concrete-300">
+                <span>Arte (L × A):</span>
+                <span class="text-paper font-bold">
+                  {{ formatMeters(quadMeasurement.avgWidthM) }} × {{ formatMeters(quadMeasurement.avgHeightM) }}
+                </span>
+              </div>
+              <div class="flex justify-between text-concrete-300">
+                <span>Área da arte:</span>
+                <span class="text-paint font-bold">{{ quadMeasurement.areaSqM.toFixed(2) }} m²</span>
+              </div>
+              <div class="flex justify-between text-concrete-300">
+                <span>Tinta est. (1 demão):</span>
+                <span class="text-paper font-bold">~{{ quadMeasurement.estimatedPaintLiters.toFixed(1) }} L</span>
+              </div>
+            </template>
+          </div>
+
+          <button
+            type="button"
+            class="w-full py-1.5 text-xs font-mono font-bold text-concrete-300 hover:text-paper border border-concrete-600 rounded-xs bg-concrete-800 transition-colors"
+            @click="$emit('clearMeasure')"
+          >
+            Limpar Medição
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Actions Footer -->
     <div class="p-4 border-t-2 border-concrete-600 bg-concrete-900 space-y-2 mt-auto">
       <div class="flex space-x-2">
         <button
@@ -442,6 +514,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { BlendMode } from '../../engine/blendEngine.js';
+import { QuadMeasurement, formatMeters } from '../../engine/wallMeasurement.js';
 import {
   Undo as UndoIcon,
   Redo as RedoIcon,
@@ -452,7 +525,8 @@ import {
   Camera as CameraIcon,
   Check as CheckIcon,
   Wand2 as Wand2Icon,
-  Crop as CropIcon
+  Crop as CropIcon,
+  Ruler as RulerIcon
 } from 'lucide-vue-next';
 
 const props = withDefaults(
@@ -471,12 +545,24 @@ const props = withDefaults(
     verticalPosition?: number;
     currentSlope?: number | null;
     hasArt?: boolean;
+    isMeasureMode?: boolean;
+    referenceMeters?: number;
+    pixelsPerMeter?: number | null;
+    measuredLineText?: string;
+    quadMeasurement?: QuadMeasurement | null;
+    hasMeasureLine?: boolean;
   }>(),
   {
     artScale: 0.70,
     verticalPosition: 0,
     currentSlope: null,
-    hasArt: false
+    hasArt: false,
+    isMeasureMode: false,
+    referenceMeters: 2,
+    pixelsPerMeter: null,
+    measuredLineText: '',
+    quadMeasurement: null,
+    hasMeasureLine: false
   }
 );
 
@@ -492,6 +578,10 @@ const emit = defineEmits<{
   (e: 'applyPreset', slope: number): void;
   (e: 'toggleMaskMode'): void;
   (e: 'clearMask'): void;
+  (e: 'toggleMeasureMode'): void;
+  (e: 'update:referenceMeters', val: number): void;
+  (e: 'calibrateMeasure'): void;
+  (e: 'clearMeasure'): void;
   (e: 'undo'): void;
   (e: 'redo'): void;
   (e: 'save'): void;

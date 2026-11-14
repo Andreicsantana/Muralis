@@ -7,7 +7,7 @@ export interface CameraPermissionResult {
 }
 
 export async function ensureCameraPermissions(): Promise<CameraPermissionResult> {
-  // If running in native Capacitor (Android/iOS)
+
   if (Capacitor.isNativePlatform()) {
     try {
       const status = await Camera.checkPermissions();
@@ -29,7 +29,6 @@ export async function ensureCameraPermissions(): Promise<CameraPermissionResult>
     }
   }
 
-  // Web / PWA / Browser environment
   if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
     return { granted: true };
   }

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col md:flex-row landscape:flex-row h-full w-full bg-concrete-900 text-paper overflow-hidden select-none safe-top safe-bottom relative">
     <main class="flex-1 relative flex flex-col h-full overflow-hidden">
-      <!-- Urban Header with 2px accent bottom line -->
+
       <header class="h-14 bg-concrete-800 border-b-2 border-paint flex items-center justify-between px-3 md:px-4 z-10 shrink-0">
         <div class="flex items-center space-x-2 md:space-x-3 min-w-0">
           <router-link
@@ -27,7 +27,7 @@
         </div>
 
         <div class="flex items-center space-x-2 shrink-0">
-          <!-- Status Chip -->
+
           <span
             v-if="isCameraActive"
             class="px-2 py-0.5 border border-paint text-paint rounded-xs text-[10px] font-mono font-bold tracking-wider flex items-center space-x-1 bg-concrete-900"
@@ -42,7 +42,13 @@
             <span>FOTO ESTÁTICA</span>
           </span>
           <span
-            v-if="projectStore.currentProject.isDirty"
+            v-if="saveFeedback"
+            class="px-2 py-0.5 border border-paint bg-paint text-paint-dark rounded-xs text-[10px] font-mono font-black tracking-wider"
+          >
+            SALVO
+          </span>
+          <span
+            v-else-if="projectStore.currentProject.isDirty"
             class="hidden sm:inline-block px-2 py-0.5 border border-concrete-600 text-concrete-300 rounded-xs text-[10px] font-mono"
           >
             ALTERADO
@@ -50,9 +56,8 @@
         </div>
       </header>
 
-      <!-- Viewport Canvas Work Area -->
       <div class="flex-1 relative overflow-hidden flex items-center justify-center p-2 md:p-4 bg-concrete-950">
-        <!-- Viewport Top-Left Live Camera Indicator Chip -->
+
         <div
           v-if="isCameraActive"
           class="absolute top-4 left-4 z-20 pointer-events-none px-2 py-1 bg-concrete-900 border border-paint text-paint rounded-xs text-[10px] font-mono font-bold tracking-wider flex items-center space-x-1.5"
@@ -70,12 +75,15 @@
           :opacity="projectStore.currentProject.opacity"
           :brightness="projectStore.currentProject.brightness"
           :contrast="projectStore.currentProject.contrast"
-          :show-handles="!isMaskMode"
+          :show-handles="!isMaskMode && !isMeasureMode"
           :mask-canvas="maskCanvas"
           :is-camera-active="isCameraActive"
           :is-mask-mode="isMaskMode"
           :brush-size="brushSize"
           :is-eraser="isEraser"
+          :is-measure-mode="isMeasureMode"
+          :measure-points="measurePoints"
+          :pixels-per-meter="pixelsPerMeter"
           @update-point="handleUpdatePoint"
           @update-points="handleUpdatePoints"
           @drag-start="handleDragStart"
@@ -83,9 +91,9 @@
           @camera-frame-captured="handleCameraFrameCaptured"
           @camera-error="handleCameraError"
           @mask-updated="handleMaskUpdated"
+          @update-measure-points="(pts) => (measurePoints = pts)"
         />
 
-        <!-- Input invisível para upload direto da arte pelo viewport ou barra flutuante -->
         <input
           ref="directArtInputRef"
           type="file"
@@ -94,7 +102,6 @@
           @change="handleDirectArtUpload"
         />
 
-        <!-- Prompt central quando ainda não há arte carregada -->
         <div
           v-if="!projectStore.currentProject.artAssetUrl"
           class="absolute z-20 flex flex-col items-center justify-center pointer-events-none p-4 text-center max-w-xs"
@@ -113,13 +120,12 @@
         </div>
       </div>
 
-      <!-- Mobile Floating Shortcut Bar (Visible only when sheet is closed or half) -->
       <div
         v-if="mobileSnap !== 'open'"
         class="md:hidden landscape:hidden absolute bottom-16 left-3 right-3 z-20 flex items-center justify-center pointer-events-none"
       >
         <div class="bg-concrete-800 border border-concrete-600 p-1.5 rounded-xs shadow-brutalist flex items-center space-x-1.5 pointer-events-auto max-w-full overflow-x-auto">
-          <!-- A ARTE VEM EM PRIMEIRO LUGAR -->
+
           <button
             type="button"
             class="py-2 px-3.5 bg-paint hover:bg-paint-hover border border-paint text-paint-dark font-mono text-xs font-black uppercase rounded-xs flex items-center space-x-1.5 transition-colors shadow-subtle shrink-0 active:scale-95"
@@ -129,7 +135,6 @@
             <span>{{ projectStore.currentProject.artAssetUrl ? 'Trocar Arte' : 'Carregar Arte' }}</span>
           </button>
 
-          <!-- Se tem arte: atalho rápido para editar/cortar -->
           <button
             v-if="projectStore.currentProject.artAssetUrl"
             type="button"
@@ -141,7 +146,6 @@
             <span>Cortar</span>
           </button>
 
-          <!-- Congelar da Câmera ou Alternar Câmera -->
           <button
             v-if="isCameraActive"
             type="button"
@@ -167,7 +171,6 @@
       </div>
     </main>
 
-    <!-- Desktop & Landscape Fixed Sidebar (320px) -->
     <div class="hidden md:flex landscape:flex w-80 shrink-0 h-full border-l-2 border-concrete-600">
       <Toolbar
         :blend-mode="projectStore.currentProject.blendMode"
@@ -184,6 +187,12 @@
         :vertical-position="verticalPosition"
         :current-slope="manualSlope"
         :has-art="!!projectStore.currentProject.artAssetUrl"
+        :is-measure-mode="isMeasureMode"
+        :reference-meters="referenceMeters"
+        :pixels-per-meter="pixelsPerMeter"
+        :measured-line-text="measuredLineText"
+        :quad-measurement="quadMeasurement"
+        :has-measure-line="measurePoints.length === 2"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -193,8 +202,12 @@
         @update:art-scale="handleUpdateArtScale"
         @update:vertical-position="handleUpdateVerticalPosition"
         @apply-preset="handleApplyPreset"
-        @toggle-mask-mode="isMaskMode = !isMaskMode"
+        @toggle-mask-mode="handleToggleMaskMode"
         @clear-mask="handleClearMask"
+        @toggle-measure-mode="handleToggleMeasureMode"
+        @update:reference-meters="(val) => (referenceMeters = val)"
+        @calibrate-measure="handleCalibrateMeasure"
+        @clear-measure="handleClearMeasure"
         @undo="projectStore.undo"
         @redo="projectStore.redo"
         @save="handleSave"
@@ -209,7 +222,6 @@
       />
     </div>
 
-    <!-- Mobile Portrait Draggable Bottom Sheet -->
     <BottomSheet v-model="mobileSnap">
       <Toolbar
         :blend-mode="projectStore.currentProject.blendMode"
@@ -226,6 +238,12 @@
         :vertical-position="verticalPosition"
         :current-slope="manualSlope"
         :has-art="!!projectStore.currentProject.artAssetUrl"
+        :is-measure-mode="isMeasureMode"
+        :reference-meters="referenceMeters"
+        :pixels-per-meter="pixelsPerMeter"
+        :measured-line-text="measuredLineText"
+        :quad-measurement="quadMeasurement"
+        :has-measure-line="measurePoints.length === 2"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -235,8 +253,12 @@
         @update:art-scale="handleUpdateArtScale"
         @update:vertical-position="handleUpdateVerticalPosition"
         @apply-preset="handleApplyPreset"
-        @toggle-mask-mode="isMaskMode = !isMaskMode"
+        @toggle-mask-mode="handleToggleMaskMode"
         @clear-mask="handleClearMask"
+        @toggle-measure-mode="handleToggleMeasureMode"
+        @update:reference-meters="(val) => (referenceMeters = val)"
+        @calibrate-measure="handleCalibrateMeasure"
+        @clear-measure="handleClearMeasure"
         @undo="projectStore.undo"
         @redo="projectStore.redo"
         @save="handleSave"
@@ -251,7 +273,6 @@
       />
     </BottomSheet>
 
-    <!-- Image Editor Modal -->
     <ImageEditorModal
       :is-open="isImageEditorOpen"
       :image-url="projectStore.currentProject.artAssetUrl"
@@ -259,7 +280,6 @@
       @save="handleSaveEditedArt"
     />
 
-    <!-- Share Modal -->
     <div
       v-if="shareModalOpen"
       class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 select-text"
@@ -309,11 +329,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft as ArrowLeftIcon, Camera as CameraIcon, Check as CheckIcon, Upload as UploadIcon, Crop as CropIcon } from 'lucide-vue-next';
 import { useProjectStore } from '../stores/projectStore.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { Point2D } from '../engine/homography.js';
+import {
+  computePixelsPerMeter,
+  measureDistanceMeters,
+  measureQuadDimensions,
+  formatMeters
+} from '../engine/wallMeasurement.js';
 import ViewportCanvas from '../components/editor/ViewportCanvas.vue';
 import Toolbar from '../components/editor/Toolbar.vue';
 import BottomSheet, { SnapState } from '../components/editor/BottomSheet.vue';
@@ -322,7 +349,10 @@ import { apiRequest } from '../services/apiClient.js';
 import { ensureCameraPermissions } from '../services/permissionService.js';
 
 const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 const projectStore = useProjectStore();
+const saveFeedback = ref(false);
 
 const viewportRef = ref<InstanceType<typeof ViewportCanvas> | null>(null);
 
@@ -331,6 +361,80 @@ const isMaskMode = ref(false);
 const brushSize = ref(30);
 const isEraser = ref(false);
 const maskCanvas = ref<HTMLCanvasElement | null>(null);
+const isMeasureMode = ref(false);
+const measurePoints = ref<Point2D[]>([
+  { x: 0.25, y: 0.5 },
+  { x: 0.75, y: 0.5 }
+]);
+const referenceMeters = ref(2.0);
+const pixelsPerMeter = ref<number | null>(null);
+
+const measuredLineText = computed(() => {
+  if (!pixelsPerMeter.value || measurePoints.value.length < 2) return '';
+  const bounds = viewportRef.value?.bounds;
+  if (!bounds) return '';
+  const m = measureDistanceMeters(
+    measurePoints.value[0],
+    measurePoints.value[1],
+    pixelsPerMeter.value,
+    bounds.width,
+    bounds.height
+  );
+  return m !== null ? formatMeters(m) : '';
+});
+
+const quadMeasurement = computed(() => {
+  if (!pixelsPerMeter.value || !projectStore.currentProject.artAssetUrl) return null;
+  const bounds = viewportRef.value?.bounds;
+  if (!bounds) return null;
+  return measureQuadDimensions(
+    projectStore.currentProject.cornerPoints,
+    pixelsPerMeter.value,
+    bounds.width,
+    bounds.height
+  );
+});
+
+function handleToggleMaskMode() {
+  isMaskMode.value = !isMaskMode.value;
+  if (isMaskMode.value) {
+    isMeasureMode.value = false;
+  }
+}
+
+function handleToggleMeasureMode() {
+  isMeasureMode.value = !isMeasureMode.value;
+  if (isMeasureMode.value) {
+    isMaskMode.value = false;
+    if (measurePoints.value.length < 2) {
+      measurePoints.value = [
+        { x: 0.25, y: 0.5 },
+        { x: 0.75, y: 0.5 }
+      ];
+    }
+  }
+}
+
+function handleCalibrateMeasure() {
+  const bounds = viewportRef.value?.bounds;
+  if (!bounds || measurePoints.value.length < 2) return;
+  const ppm = computePixelsPerMeter(
+    measurePoints.value[0],
+    measurePoints.value[1],
+    referenceMeters.value,
+    bounds.width,
+    bounds.height
+  );
+  if (ppm) {
+    pixelsPerMeter.value = ppm;
+  }
+}
+
+function handleClearMeasure() {
+  pixelsPerMeter.value = null;
+  measurePoints.value = [];
+  isMeasureMode.value = false;
+}
 const isCameraActive = ref(false);
 const artScale = ref(0.70);
 const verticalPosition = ref(0);
@@ -467,24 +571,32 @@ function handleArtLoaded(url: string) {
 }
 
 async function handleSave() {
-  await projectStore.saveProject();
+  const savedId = await projectStore.saveProject();
+  if (route.params.id !== savedId) {
+    router.replace(`/editor/${savedId}`);
+  }
+  saveFeedback.value = true;
+  setTimeout(() => {
+    saveFeedback.value = false;
+  }, 2000);
 }
 
 async function handleShare() {
   if (!projectStore.currentProject.id) {
-    await projectStore.saveProject();
+    const savedId = await projectStore.saveProject();
+    if (route.params.id !== savedId) {
+      router.replace(`/editor/${savedId}`);
+    }
   }
   let targetUrl = window.location.href;
-  if (projectStore.currentProject.id) {
+  if (authStore.isAuthenticated && projectStore.currentProject.id && !projectStore.currentProject.id.startsWith('local_')) {
     try {
       const res = await apiRequest(`/projects/${projectStore.currentProject.id}/share`, {
         method: 'POST',
         body: JSON.stringify({ expiresInDays: 30 })
       });
       targetUrl = `${window.location.origin}/share/${res.token}`;
-    } catch (err) {
-      console.warn('API share link generation skipped, using current url', err);
-    }
+    } catch {}
   }
 
   shareUrl.value = targetUrl;
@@ -523,7 +635,6 @@ async function handleExport() {
     const safeTitle = (projectStore.currentProject.title || 'mural').toLowerCase().replace(/\s+/g, '-');
     const fileName = `${safeTitle}-muralis.png`;
 
-    // Native file sharing if supported
     try {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
@@ -542,7 +653,6 @@ async function handleExport() {
       console.warn('Native file share failed or unsupported, downloading file', shareErr);
     }
 
-    // Standard download
     const link = document.createElement('a');
     link.download = fileName;
     link.href = dataUrl;
@@ -564,7 +674,6 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
 
   const isCtrlOrMeta = e.ctrlKey || e.metaKey;
 
-  // Undo / Redo
   if (isCtrlOrMeta && !e.shiftKey && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     projectStore.undo();
@@ -576,21 +685,18 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
     return;
   }
 
-  // Escape: deselect artwork
   if (e.key === 'Escape') {
     e.preventDefault();
     viewportRef.value?.deselect();
     return;
   }
 
-  // Delete / Backspace: clear mask only when mask mode is active
   if ((e.key === 'Delete' || e.key === 'Backspace') && isMaskMode.value) {
     e.preventDefault();
     handleClearMask();
     return;
   }
 
-  // Arrow keys: move art (1px, 10px with Shift)
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
     if (!projectStore.currentProject.cornerPoints || !projectStore.currentProject.artAssetUrl) return;
     e.preventDefault();
@@ -616,9 +722,11 @@ onMounted(async () => {
   const projectId = route.params.id as string;
   if (projectId) {
     await projectStore.loadProject(projectId);
+    if (projectStore.currentProject.maskCanvas) {
+      maskCanvas.value = projectStore.currentProject.maskCanvas;
+    }
   }
 
-  // Camera active by default if no static base photo is already loaded
   if (!projectStore.currentProject.basePhotoUrl) {
     try {
       const perm = await ensureCameraPermissions();

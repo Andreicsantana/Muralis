@@ -1,6 +1,6 @@
 <template>
   <div class="h-full bg-concrete-900 text-paper flex flex-col overflow-hidden select-none">
-    <!-- Header with 2px accent bottom border -->
+
     <header class="h-16 bg-concrete-800 border-b-2 border-paint flex items-center justify-between px-4 sm:px-6 z-10 shrink-0">
       <div class="flex items-center space-x-3">
         <span class="w-2 h-7 bg-paint"></span>

@@ -6,7 +6,6 @@
   color-scheme: dark;
 }
 
-/* Ensure mobile inputs never trigger iOS auto-zoom */
 @media (max-width: 767px) {
   input, textarea, select {
     font-size: 16px !important;
@@ -32,7 +31,6 @@ body {
   color: #151413;
 }
 
-/* Safe area support for mobile notch and navigation bars */
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
@@ -41,7 +39,6 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Symmetrical concrete scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -60,7 +57,6 @@ body {
   background: #55514b;
 }
 
-/* Range input styling: concrete track with paint accent */
 input[type=range] {
   -webkit-appearance: none;
   appearance: none;
@@ -82,7 +78,6 @@ input[type=range]::-webkit-slider-thumb {
   transition: transform 0.1s ease;
 }
 
-/* Touch devices thumb with at least 28px hit area */
 @media (pointer: coarse) {
   input[type=range] {
     height: 8px;
@@ -98,7 +93,6 @@ input[type=range]:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px #151413, 0 0 0 4px #ee5a3c;
 }
 
-/* Accessible focus ring for buttons and inputs */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,

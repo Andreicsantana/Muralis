@@ -1,19 +1,18 @@
 <template>
   <div class="contents">
-    <!-- Backdrop: visible when sheet is in 'open' snap position -->
+
     <div
       v-if="currentSnap === 'open'"
       class="fixed inset-0 bg-black/60 z-30 transition-opacity duration-250 md:hidden"
       @click="setSnap('closed')"
     ></div>
 
-    <!-- Sheet Container -->
     <div
       ref="sheetRef"
       class="fixed inset-x-0 bottom-0 z-40 flex flex-col bg-[#262523] border-t-2 border-[#3a3835] rounded-t-[2px] shadow-2xl overflow-hidden md:hidden will-change-transform select-none"
       :style="sheetStyle"
     >
-      <!-- Drag Handle Area (Touch-action none strictly on handle) -->
+
       <div
         ref="handleRef"
         class="h-10 w-full flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0 border-b border-[#3a3835]/60 bg-[#262523]"
@@ -22,7 +21,6 @@
         <div class="w-12 h-1 bg-[#55514b] rounded-[1px]"></div>
       </div>
 
-      <!-- Sheet Header / Bar -->
       <div
         class="px-4 py-2 flex items-center justify-between border-b border-[#3a3835] bg-[#262523] shrink-0 touch-none"
         @pointerdown="onHeaderPointerDown"
@@ -58,7 +56,6 @@
         </div>
       </div>
 
-      <!-- Scrollable Sheet Content -->
       <div
         ref="contentRef"
         class="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,16px)]"
@@ -184,7 +181,6 @@ function toggleNextSnap() {
   else setSnap('half');
 }
 
-// Pointer drag handling on handle & header
 let startY = 0;
 let startTranslate = 0;
 let lastMoveY = 0;
@@ -249,20 +245,18 @@ function onPointerUp(e: PointerEvent) {
   const snapHalf = getSnapTranslateY('half');
   const snapClosed = getSnapTranslateY('closed');
 
-  // Fling detection
   if (velocityY > 0.4) {
-    // Fling down
+
     if (currentSnap.value === 'open') setSnap('half');
     else setSnap('closed');
     return;
   } else if (velocityY < -0.4) {
-    // Fling up
+
     if (currentSnap.value === 'closed') setSnap('half');
     else setSnap('open');
     return;
   }
 
-  // Distance snap
   const distOpen = Math.abs(currentY - snapOpen);
   const distHalf = Math.abs(currentY - snapHalf);
   const distClosed = Math.abs(currentY - snapClosed);

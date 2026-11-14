@@ -1,7 +1,7 @@
 <template>
   <div class="h-full bg-concrete-900 text-paper flex items-center justify-center p-4 relative overflow-hidden select-none">
     <div class="max-w-md w-full bg-concrete-800 border-2 border-concrete-600 shadow-brutalist relative p-6 sm:p-8 space-y-6 rounded-xs">
-      <!-- Stencil Header -->
+
       <div class="space-y-2 border-b-2 border-paint pb-4">
         <div class="flex items-center space-x-2">
           <span class="w-2 h-6 bg-paint"></span>
@@ -14,7 +14,6 @@
         </h2>
       </div>
 
-      <!-- Form -->
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <div v-if="isRegister">
           <label class="block text-xs font-mono font-semibold uppercase tracking-wider text-concrete-300 mb-1">
@@ -68,7 +67,6 @@
         </button>
       </form>
 
-      <!-- Footer switch -->
       <div class="text-center pt-2 border-t border-concrete-600">
         <button
           type="button"

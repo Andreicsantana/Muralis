@@ -24,7 +24,6 @@ const emit = defineEmits<{
 const maskContainerRef = ref<HTMLDivElement | null>(null);
 const maskCanvasRef = ref<HTMLCanvasElement | null>(null);
 
-// Master high-resolution normalized canvas (2048x2048)
 const MASTER_RES = 2048;
 let masterCanvas: HTMLCanvasElement | null = null;
 let masterCtx: CanvasRenderingContext2D | null = null;
@@ -52,7 +51,7 @@ function syncDisplayCanvas() {
   if (!ctx) return;
 
   ctx.clearRect(0, 0, width, height);
-  // Redraw from master without displacement or loss
+
   ctx.drawImage(masterCanvas, 0, 0, width, height);
 }
 
@@ -77,7 +76,6 @@ function handlePointerDown(e: PointerEvent) {
   const scaleToMaster = MASTER_RES / width;
   const masterBrushRadius = (props.brushSize / 2) * scaleToMaster;
 
-  // Configure master context
   masterCtx.lineCap = 'round';
   masterCtx.lineJoin = 'round';
   masterCtx.lineWidth = props.brushSize * scaleToMaster;
@@ -89,7 +87,6 @@ function handlePointerDown(e: PointerEvent) {
     masterCtx.strokeStyle = '#000000';
   }
 
-  // Configure display context
   displayCtx.lineCap = 'round';
   displayCtx.lineJoin = 'round';
   displayCtx.lineWidth = props.brushSize;
@@ -101,7 +98,6 @@ function handlePointerDown(e: PointerEvent) {
     displayCtx.strokeStyle = '#000000';
   }
 
-  // Draw initial spot
   const normX = startX / width;
   const normY = startY / height;
   const masterX = normX * MASTER_RES;
@@ -130,13 +126,11 @@ function handlePointerDown(e: PointerEvent) {
     const curMasterX = curNormX * MASTER_RES;
     const curMasterY = curNormY * MASTER_RES;
 
-    // Stroke master
     masterCtx.beginPath();
     masterCtx.moveTo(lastMasterX, lastMasterY);
     masterCtx.lineTo(curMasterX, curMasterY);
     masterCtx.stroke();
 
-    // Stroke display
     displayCtx.beginPath();
     displayCtx.moveTo(lastX, lastY);
     displayCtx.lineTo(curX, curY);
