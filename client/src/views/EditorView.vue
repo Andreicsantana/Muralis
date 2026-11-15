@@ -84,6 +84,7 @@
           :is-measure-mode="isMeasureMode"
           :measure-points="measurePoints"
           :pixels-per-meter="pixelsPerMeter"
+          :show-painter-grid="showPainterGrid"
           @update-point="handleUpdatePoint"
           @update-points="handleUpdatePoints"
           @drag-start="handleDragStart"
@@ -193,6 +194,7 @@
         :measured-line-text="measuredLineText"
         :quad-measurement="quadMeasurement"
         :has-measure-line="measurePoints.length === 2"
+        :show-painter-grid="showPainterGrid"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -219,6 +221,11 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @open-matrix-inspector="isMatrixInspectorOpen = true"
+        @open-convolution-filters="isConvolutionFiltersOpen = true"
+        @open-three-scene="isThreeSceneOpen = true"
+        @toggle-painter-grid="showPainterGrid = !showPainterGrid"
+        @open-projector-mode="isProjectorModeOpen = true"
       />
     </div>
 
@@ -244,6 +251,7 @@
         :measured-line-text="measuredLineText"
         :quad-measurement="quadMeasurement"
         :has-measure-line="measurePoints.length === 2"
+        :show-painter-grid="showPainterGrid"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -270,6 +278,11 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @open-matrix-inspector="isMatrixInspectorOpen = true"
+        @open-convolution-filters="isConvolutionFiltersOpen = true"
+        @open-three-scene="isThreeSceneOpen = true"
+        @toggle-painter-grid="showPainterGrid = !showPainterGrid"
+        @open-projector-mode="isProjectorModeOpen = true"
       />
     </BottomSheet>
 
@@ -280,6 +293,33 @@
       @save="handleSaveEditedArt"
     />
 
+    <MatrixInspectorModal
+      :is-open="isMatrixInspectorOpen"
+      :corner-points="projectStore.currentProject.cornerPoints"
+      :canvas-bounds="viewportRef?.bounds || { width: 800, height: 600 }"
+      @close="isMatrixInspectorOpen = false"
+    />
+
+    <ConvolutionFiltersModal
+      :is-open="isConvolutionFiltersOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      @close="isConvolutionFiltersOpen = false"
+      @apply-filter="handleApplyFilter"
+    />
+
+    <ThreeSceneModal
+      :is-open="isThreeSceneOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      :base-photo-url="projectStore.currentProject.basePhotoUrl"
+      @close="isThreeSceneOpen = false"
+    />
+
+    <ProjectorKeystoneModal
+      :is-open="isProjectorModeOpen"
+      :art-asset-url="projectStore.currentProject.artAssetUrl"
+      :corner-points="projectStore.currentProject.cornerPoints"
+      @close="isProjectorModeOpen = false"
+    />
     <div
       v-if="shareModalOpen"
       class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 select-text"
@@ -345,6 +385,10 @@ import ViewportCanvas from '../components/editor/ViewportCanvas.vue';
 import Toolbar from '../components/editor/Toolbar.vue';
 import BottomSheet, { SnapState } from '../components/editor/BottomSheet.vue';
 import ImageEditorModal from '../components/editor/ImageEditorModal.vue';
+import MatrixInspectorModal from '../components/editor/MatrixInspectorModal.vue';
+import ConvolutionFiltersModal from '../components/editor/ConvolutionFiltersModal.vue';
+import ThreeSceneModal from '../components/editor/ThreeSceneModal.vue';
+import ProjectorKeystoneModal from '../components/editor/ProjectorKeystoneModal.vue';
 import { apiRequest } from '../services/apiClient.js';
 import { ensureCameraPermissions } from '../services/permissionService.js';
 
@@ -440,6 +484,11 @@ const artScale = ref(0.70);
 const verticalPosition = ref(0);
 const manualSlope = ref<number | null>(null);
 const isImageEditorOpen = ref(false);
+const isMatrixInspectorOpen = ref(false);
+const isConvolutionFiltersOpen = ref(false);
+const isThreeSceneOpen = ref(false);
+const isProjectorModeOpen = ref(false);
+const showPainterGrid = ref(false);
 const directArtInputRef = ref<HTMLInputElement | null>(null);
 
 function handleDirectArtUpload(e: Event) {
@@ -468,6 +517,12 @@ function handleSaveEditedArt(newUrl: string) {
   projectStore.saveProject();
 }
 
+function handleApplyFilter(newArtUrl: string) {
+  projectStore.pushHistory();
+  projectStore.setArtAsset(newArtUrl);
+  projectStore.saveProject();
+}
+
 function handleUpdatePoint(index: number, point: Point2D) {
   projectStore.setCornerPoint(index, point);
 }
@@ -484,90 +539,93 @@ function handleDragEnd() {
   projectStore.saveProject();
 }
 
+function handleMaskUpdated(canvas: HTMLCanvasElement) {
+  maskCanvas.value = canvas;
+  projectStore.currentProject.isDirty = true;
+}
+
+function handleClearMask() {
+  maskCanvas.value = null;
+  viewportRef.value?.clearMask();
+  projectStore.currentProject.isDirty = true;
+}
+
 async function handleToggleCamera() {
-  if (!isCameraActive.value) {
-    const perm = await ensureCameraPermissions();
-    if (!perm.granted) {
-      alert(perm.error || 'Permissão para usar a câmera não concedida.');
-      return;
-    }
-    isCameraActive.value = true;
-  } else {
+  if (isCameraActive.value) {
     isCameraActive.value = false;
+  } else {
+    try {
+      const perm = await ensureCameraPermissions();
+      if (!perm.granted) {
+        alert(perm.error || 'Permissão de câmera necessária.');
+        return;
+      }
+      isCameraActive.value = true;
+    } catch (e: any) {
+      alert(e.message || 'Não foi possível solicitar permissão para a câmera.');
+    }
   }
 }
 
 function handleCaptureCamera() {
-  if (viewportRef.value) {
-    const frame = viewportRef.value.captureCameraFrame();
-    if (frame) {
-      projectStore.pushHistory();
-      projectStore.setBasePhoto(frame);
-      isCameraActive.value = false;
-    }
+  if (!viewportRef.value) return;
+  const dataUrl = viewportRef.value.captureCameraFrame();
+  if (dataUrl) {
+    projectStore.pushHistory();
+    projectStore.setBasePhoto(dataUrl);
+    isCameraActive.value = false;
+    projectStore.saveProject();
   }
 }
 
-function handleCameraFrameCaptured(frame: string) {
-  projectStore.setBasePhoto(frame);
-}
-
-function handleCameraError(errorMsg: string) {
-  alert(errorMsg);
+function handleCameraFrameCaptured(dataUrl: string) {
+  projectStore.pushHistory();
+  projectStore.setBasePhoto(dataUrl);
   isCameraActive.value = false;
+  projectStore.saveProject();
 }
 
-function handleAutoFit() {
-  if (viewportRef.value) {
-    projectStore.pushHistory();
-    viewportRef.value.autoFitWall({
-      scaleFactor: artScale.value,
-      verticalOffset: verticalPosition.value,
-      manualSlope: manualSlope.value
-    });
-  }
-}
-
-function handleApplyPreset(slope: number) {
-  manualSlope.value = slope;
-  if (viewportRef.value) {
-    projectStore.pushHistory();
-    viewportRef.value.applyDirectionPreset(slope);
-  }
-}
-
-function handleUpdateArtScale(val: number) {
-  artScale.value = val;
-  handleAutoFit();
-}
-
-function handleUpdateVerticalPosition(val: number) {
-  verticalPosition.value = val;
-  handleAutoFit();
-}
-
-function handleMaskUpdated(canvas: HTMLCanvasElement) {
-  maskCanvas.value = canvas;
-  projectStore.currentProject.maskCanvas = canvas;
-}
-
-function handleClearMask() {
-  if (viewportRef.value) {
-    viewportRef.value.clearMask();
-  }
-  maskCanvas.value = null;
-  projectStore.currentProject.maskCanvas = null;
+function handleCameraError(error: string) {
+  console.error('Camera error in view:', error);
+  isCameraActive.value = false;
 }
 
 function handleBaseLoaded(url: string) {
   projectStore.pushHistory();
-  projectStore.setBasePhoto(url);
   isCameraActive.value = false;
+  projectStore.setBasePhoto(url);
+  projectStore.saveProject();
 }
 
 function handleArtLoaded(url: string) {
   projectStore.pushHistory();
   projectStore.setArtAsset(url);
+  projectStore.saveProject();
+}
+
+function handleAutoFit() {
+  if (!viewportRef.value) return;
+  viewportRef.value.autoFitWall({
+    scaleFactor: artScale.value,
+    manualSlope: manualSlope.value,
+    verticalOffset: verticalPosition.value
+  });
+}
+
+function handleApplyPreset(slope: number) {
+  manualSlope.value = slope;
+  if (!viewportRef.value) return;
+  viewportRef.value.applyDirectionPreset(slope);
+}
+
+function handleUpdateArtScale(scale: number) {
+  artScale.value = scale;
+  handleAutoFit();
+}
+
+function handleUpdateVerticalPosition(pos: number) {
+  verticalPosition.value = pos;
+  handleAutoFit();
 }
 
 async function handleSave() {
@@ -582,20 +640,21 @@ async function handleSave() {
 }
 
 async function handleShare() {
-  if (!projectStore.currentProject.id) {
-    const savedId = await projectStore.saveProject();
-    if (route.params.id !== savedId) {
-      router.replace(`/editor/${savedId}`);
-    }
+  const savedId = await projectStore.saveProject();
+  if (route.params.id !== savedId) {
+    router.replace(`/editor/${savedId}`);
   }
+
   let targetUrl = window.location.href;
-  if (authStore.isAuthenticated && projectStore.currentProject.id && !projectStore.currentProject.id.startsWith('local_')) {
+  if (authStore.isAuthenticated && !savedId.startsWith('local_')) {
     try {
-      const res = await apiRequest(`/projects/${projectStore.currentProject.id}/share`, {
+      const res = await apiRequest<{ shareUrl?: string; token?: string }>(`/projects/${savedId}/share`, {
         method: 'POST',
         body: JSON.stringify({ expiresInDays: 30 })
       });
-      targetUrl = `${window.location.origin}/share/${res.token}`;
+      if (res.token) {
+        targetUrl = `${window.location.origin}/share/${res.token}`;
+      }
     } catch {}
   }
 
@@ -604,9 +663,9 @@ async function handleShare() {
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({
-        title: projectStore.currentProject.title || 'Muralis — Simulação',
-        text: 'Confira a simulação de mural na fachada:',
-        url: targetUrl
+        title: projectStore.currentProject.title || 'Muralis',
+        text: 'Confira a simulação do mural projetado:',
+        url: shareUrl.value
       });
       return;
     } catch (err: any) {

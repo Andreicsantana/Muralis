@@ -58,6 +58,7 @@ import { ref, onMounted, onBeforeUnmount, watch, reactive, shallowRef } from 'vu
 import { Point2D } from '../../engine/homography.js';
 import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
 import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane } from '../../engine/autoFit.js';
+import { drawPerspectiveSquaringGrid } from '../../engine/squaringGrid.js';
 import CornerHandles from './CornerHandles.vue';
 import MaskBrush from './MaskBrush.vue';
 import WallMeasureOverlay from './WallMeasureOverlay.vue';
@@ -79,6 +80,7 @@ const props = defineProps<{
   isMeasureMode?: boolean;
   measurePoints?: Point2D[];
   pixelsPerMeter?: number | null;
+  showPainterGrid?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -420,7 +422,20 @@ function render() {
     contrast: props.contrast
   };
 
-  compositeLayers(ctx, canvasRef.value.width, canvasRef.value.height, state, 16);
+  const w = canvasRef.value.width;
+  const h = canvasRef.value.height;
+  compositeLayers(ctx, w, h, state, 16);
+
+  // Grade de Perspectiva do Pintor (Squaring-up)
+  if (props.showPainterGrid && artImage.value && props.cornerPoints) {
+    const scaledCorners: [Point2D, Point2D, Point2D, Point2D] = [
+      { x: props.cornerPoints[0].x * w, y: props.cornerPoints[0].y * h },
+      { x: props.cornerPoints[1].x * w, y: props.cornerPoints[1].y * h },
+      { x: props.cornerPoints[2].x * w, y: props.cornerPoints[2].y * h },
+      { x: props.cornerPoints[3].x * w, y: props.cornerPoints[3].y * h }
+    ];
+    drawPerspectiveSquaringGrid(ctx, scaledCorners, { rows: 6, cols: 8 });
+  }
 }
 
 async function exportHighRes(mimeType: 'image/png' | 'image/jpeg' = 'image/png'): Promise<string> {
@@ -452,6 +467,17 @@ async function exportHighRes(mimeType: 'image/png' | 'image/jpeg' = 'image/png')
   };
 
   compositeLayers(exportCtx, exportCanvas.width, exportCanvas.height, state, 32);
+
+  if (props.showPainterGrid && artImage.value && props.cornerPoints) {
+    const scaledCorners: [Point2D, Point2D, Point2D, Point2D] = [
+      { x: props.cornerPoints[0].x * exportCanvas.width, y: props.cornerPoints[0].y * exportCanvas.height },
+      { x: props.cornerPoints[1].x * exportCanvas.width, y: props.cornerPoints[1].y * exportCanvas.height },
+      { x: props.cornerPoints[2].x * exportCanvas.width, y: props.cornerPoints[2].y * exportCanvas.height },
+      { x: props.cornerPoints[3].x * exportCanvas.width, y: props.cornerPoints[3].y * exportCanvas.height }
+    ];
+    drawPerspectiveSquaringGrid(exportCtx, scaledCorners, { rows: 6, cols: 8 });
+  }
+
   return exportCanvas.toDataURL(mimeType, 0.95);
 }
 
@@ -468,6 +494,7 @@ function clearMask() {
 }
 
 defineExpose({
+  bounds,
   exportHighRes,
   updateLayout,
   startCamera,
@@ -476,7 +503,6 @@ defineExpose({
   autoFitWall,
   applyDirectionPreset,
   clearMask,
-  bounds,
   select: () => (isSelected.value = true),
   deselect: () => (isSelected.value = false)
 });
@@ -499,7 +525,8 @@ watch(
     () => props.opacity,
     () => props.brightness,
     () => props.contrast,
-    () => props.maskCanvas
+    () => props.maskCanvas,
+    () => props.showPainterGrid
   ],
   () => {
     if (!props.isCameraActive) requestRender();

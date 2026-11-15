@@ -96,98 +96,98 @@
           type="button"
           class="w-full py-2.5 px-3 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors text-paper"
           @click="$emit('autoFit')"
-          title="Detectar alinhamento da parede e ajustar perspectiva da arte"
         >
           <Wand2Icon class="w-4 h-4 text-paint" />
-          <span>Auto-ajustar ao muro</span>
+          <span>Ajustar à Parede</span>
         </button>
 
-        <div class="space-y-1">
-          <span class="text-[11px] font-mono text-concrete-300 uppercase">Fuga da parede:</span>
+        <div class="space-y-1.5 pt-1">
+          <span class="text-xs font-mono text-concrete-300 block">Ângulo de visão do muro:</span>
           <div class="grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
+              class="py-1.5 px-1 text-xs font-mono rounded-xs font-bold border text-center transition-colors truncate"
               :class="
-                currentSlope !== null && currentSlope !== undefined && currentSlope < -0.1
+                currentSlope !== null && currentSlope < -0.1
                   ? 'bg-paint border-paint text-paint-dark'
-                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
+                  : 'bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper'
               "
-              title="Fuga para esquerda"
-              @click="$emit('applyPreset', -0.28)"
+              title="Muro visto pela esquerda"
+              @click="$emit('applyPreset', -0.22)"
             >
-              <span>◀ Esq.</span>
+              ← Esq
             </button>
             <button
               type="button"
-              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
+              class="py-1.5 px-1 text-xs font-mono rounded-xs font-bold border text-center transition-colors truncate"
               :class="
-                currentSlope !== null && currentSlope !== undefined && Math.abs(currentSlope) <= 0.1
+                currentSlope === null || Math.abs(currentSlope) <= 0.1
                   ? 'bg-paint border-paint text-paint-dark'
-                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
+                  : 'bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper'
               "
-              title="Muro frontal"
+              title="Muro visto de frente"
               @click="$emit('applyPreset', 0)"
             >
-              <span>Frontal</span>
+              Frente
             </button>
             <button
               type="button"
-              class="py-1.5 px-2 rounded-xs text-xs font-mono font-bold text-center transition-colors border"
+              class="py-1.5 px-1 text-xs font-mono rounded-xs font-bold border text-center transition-colors truncate"
               :class="
-                currentSlope !== null && currentSlope !== undefined && currentSlope > 0.1
+                currentSlope !== null && currentSlope > 0.1
                   ? 'bg-paint border-paint text-paint-dark'
-                  : 'bg-concrete-700 border-concrete-600 hover:border-paint text-paper'
+                  : 'bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper'
               "
-              title="Fuga para direita"
-              @click="$emit('applyPreset', 0.28)"
+              title="Muro visto pela direita"
+              @click="$emit('applyPreset', 0.22)"
             >
-              <span>Dir. ▶</span>
+              Dir →
             </button>
           </div>
         </div>
 
-        <div class="space-y-2.5 pt-1">
-          <div class="space-y-1">
-            <div class="flex justify-between text-xs font-mono text-concrete-300">
-              <span>Tamanho da arte</span>
-              <span class="text-paper font-bold">{{ Math.round(artScale * 100) }}%</span>
-            </div>
-            <input
-              type="range"
-              min="0.3"
-              max="0.95"
-              step="0.05"
-              :value="artScale"
-              class="w-full"
-              @input="(e) => $emit('update:artScale', parseFloat((e.target as HTMLInputElement).value))"
-            />
+        <div class="space-y-1 pt-1">
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
+            <span>Tamanho da arte no muro</span>
+            <span class="text-paper font-bold">{{ Math.round((artScale ?? 0.7) * 100) }}%</span>
           </div>
+          <input
+            type="range"
+            min="0.20"
+            max="1.50"
+            step="0.05"
+            :value="artScale"
+            class="w-full"
+            @input="(e) => $emit('update:artScale', parseFloat((e.target as HTMLInputElement).value))"
+          />
+        </div>
 
-          <div class="space-y-1">
-            <div class="flex justify-between text-xs font-mono text-concrete-300">
-              <span>Posição vertical</span>
-              <span class="text-paper font-bold">{{ verticalPositionLabel }}</span>
-            </div>
-            <input
-              type="range"
-              min="-0.5"
-              max="0.5"
-              step="0.05"
-              :value="verticalPosition"
-              class="w-full"
-              @input="(e) => $emit('update:verticalPosition', parseFloat((e.target as HTMLInputElement).value))"
-            />
+        <!-- Slider de Posição Vertical -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
+            <span>Altura da arte</span>
+            <span class="text-paper font-bold">{{ verticalPositionLabel }}</span>
           </div>
+          <input
+            type="range"
+            min="-0.40"
+            max="0.40"
+            step="0.05"
+            :value="verticalPosition"
+            class="w-full"
+            @input="(e) => $emit('update:verticalPosition', parseFloat((e.target as HTMLInputElement).value))"
+          />
         </div>
       </div>
+
 
       <div class="space-y-3 pt-3 border-t border-concrete-600">
         <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center">
           <span class="text-paint mr-1.5 font-black">03</span>
-          <span class="text-paper">Tinta & Mistura</span>
+          <span class="text-paper">Pintura & Acabamento</span>
         </div>
-        <div class="grid grid-cols-2 gap-2">
+
+        <div class="grid grid-cols-2 gap-1.5">
           <button
             v-for="mode in blendModes"
             :key="mode.id"
@@ -476,6 +476,71 @@
           </button>
         </div>
       </div>
+
+      <div class="space-y-3 pt-3 border-t border-concrete-600">
+        <div class="text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between">
+          <div class="flex items-center">
+            <span class="text-paint mr-1.5 font-black">07</span>
+            <span class="text-paper">Computação Gráfica</span>
+          </div>
+          <span class="text-[9px] font-mono px-1.5 py-0.5 bg-paint/20 text-paint border border-paint/40 rounded-xs font-bold">
+            CG & PDI
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            class="p-2 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint text-paper font-mono text-xs font-bold rounded-xs flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+            title="Inspecionar matriz homogênea 3x3, determinante e decomposição"
+            @click="$emit('openMatrixInspector')"
+          >
+            <SlidersIcon class="w-4 h-4 text-paint" />
+            <span>Matriz 3x3</span>
+          </button>
+
+          <button
+            type="button"
+            class="p-2 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint text-paper font-mono text-xs font-bold rounded-xs flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+            title="Convolução 3x3 (Sobel, Gaussiano, Laplaciano) e Relevo de Parede"
+            @click="$emit('openConvolutionFilters')"
+          >
+            <SparklesIcon class="w-4 h-4 text-paint" />
+            <span>Filtros PDI</span>
+          </button>
+
+          <button
+            type="button"
+            class="p-2 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint text-paper font-mono text-xs font-bold rounded-xs flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+            title="Simulador de Ambiente 3D com iluminação Phong e órbita livre"
+            @click="$emit('openThreeScene')"
+          >
+            <BoxIcon class="w-4 h-4 text-paint" />
+            <span>Cena 3D & Luz</span>
+          </button>
+
+          <button
+            type="button"
+            class="p-2 border font-mono text-xs font-bold rounded-xs flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+            :class="showPainterGrid ? 'bg-paint text-paint-dark border-paint' : 'bg-concrete-700 hover:bg-concrete-600 border-concrete-600 text-paper'"
+            title="Exibir grade de perspectiva do pintor (A1, A2, B1...)"
+            @click="$emit('togglePainterGrid')"
+          >
+            <GridIcon class="w-4 h-4" :class="showPainterGrid ? 'text-paint-dark' : 'text-paint'" />
+            <span>{{ showPainterGrid ? 'Grade: Ativa' : 'Grade Pintor' }}</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="w-full py-2 px-3 bg-concrete-900 hover:bg-concrete-750 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-2 transition-colors"
+          title="Modo tela cheia com Keystone inverso para apontar projetor para a parede"
+          @click="$emit('openProjectorMode')"
+        >
+          <TvIcon class="w-3.5 h-3.5 text-paint" />
+          <span>Modo Projetor (Keystone Inverso)</span>
+        </button>
+      </div>
     </div>
 
     <div class="p-4 border-t-2 border-concrete-600 bg-concrete-900 space-y-2 mt-auto">
@@ -526,7 +591,12 @@ import {
   Check as CheckIcon,
   Wand2 as Wand2Icon,
   Crop as CropIcon,
-  Ruler as RulerIcon
+  Ruler as RulerIcon,
+  Sliders as SlidersIcon,
+  Sparkles as SparklesIcon,
+  Box as BoxIcon,
+  Grid as GridIcon,
+  Tv as TvIcon
 } from 'lucide-vue-next';
 
 const props = withDefaults(
@@ -551,6 +621,7 @@ const props = withDefaults(
     measuredLineText?: string;
     quadMeasurement?: QuadMeasurement | null;
     hasMeasureLine?: boolean;
+    showPainterGrid?: boolean;
   }>(),
   {
     artScale: 0.70,
@@ -562,7 +633,8 @@ const props = withDefaults(
     pixelsPerMeter: null,
     measuredLineText: '',
     quadMeasurement: null,
-    hasMeasureLine: false
+    hasMeasureLine: false,
+    showPainterGrid: false
   }
 );
 
@@ -593,6 +665,11 @@ const emit = defineEmits<{
   (e: 'captureCamera'): void;
   (e: 'autoFit'): void;
   (e: 'openImageEditor'): void;
+  (e: 'openMatrixInspector'): void;
+  (e: 'openConvolutionFilters'): void;
+  (e: 'openThreeScene'): void;
+  (e: 'togglePainterGrid'): void;
+  (e: 'openProjectorMode'): void;
 }>();
 
 const verticalPositionLabel = computed(() => {
