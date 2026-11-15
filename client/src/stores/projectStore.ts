@@ -87,7 +87,7 @@ export const useProjectStore = defineStore('project', () => {
     currentProject.value.isDirty = true;
   }
 
-  function setArtAsset(url: string) {
+  function setArtAsset(url: string | null) {
     currentProject.value.artAssetUrl = url;
     currentProject.value.isDirty = true;
   }

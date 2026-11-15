@@ -242,6 +242,7 @@ const props = defineProps<{
   isOpen: boolean;
   artAssetUrl: string | null;
   basePhotoUrl: string | null;
+  sceneTextureUrl?: string | null;
 }>();
 
 defineEmits<{
@@ -361,37 +362,48 @@ function initThree() {
   grid.position.y = -1.99;
   scene.add(grid);
 
-  // Main Wall (Back)
-  const wallGeo = new THREE.PlaneGeometry(6, 4);
+  const wallHeight = 4.2;
+  let wallWidth = 6.0;
+  const wallGeo = new THREE.PlaneGeometry(wallWidth, wallHeight);
   wallMaterial = new THREE.MeshStandardMaterial({
-    color: 0xcccccc,
+    color: 0xffffff,
     roughness: roughness.value,
     metalness: metalness.value
   });
 
-  // Texture loader for art
-  if (props.artAssetUrl) {
+  wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
+  wallMesh.position.set(0, 0.1, 0);
+  wallMesh.receiveShadow = true;
+  scene.add(wallMesh);
+
+  const frameGeo = new THREE.BoxGeometry(wallWidth + 0.2, wallHeight + 0.2, 0.06);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.6 });
+  const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+  frameMesh.position.set(0, 0.1, -0.04);
+  scene.add(frameMesh);
+
+  const textureSource = props.sceneTextureUrl || props.basePhotoUrl || props.artAssetUrl;
+  if (textureSource) {
     const loader = new THREE.TextureLoader();
-    loader.load(props.artAssetUrl, (texture) => {
+    loader.load(textureSource, (texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
+      const img = texture.image as { width?: number; height?: number } | undefined;
+      if (img?.width && img?.height && wallMesh) {
+        const texAspect = img.width / img.height;
+        wallWidth = Math.max(2.8, Math.min(9.0, wallHeight * texAspect));
+        wallMesh.geometry.dispose();
+        wallMesh.geometry = new THREE.PlaneGeometry(wallWidth, wallHeight);
+        frameMesh.geometry.dispose();
+        frameMesh.geometry = new THREE.BoxGeometry(wallWidth + 0.2, wallHeight + 0.2, 0.06);
+      }
       if (wallMaterial) {
         wallMaterial.map = texture;
+        wallMaterial.bumpMap = texture;
+        wallMaterial.bumpScale = 0.04;
         wallMaterial.needsUpdate = true;
       }
     });
   }
-
-  wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
-  wallMesh.position.set(0, 0, 0);
-  wallMesh.receiveShadow = true;
-  scene.add(wallMesh);
-
-  // Border frame around mural
-  const frameGeo = new THREE.BoxGeometry(6.2, 4.2, 0.05);
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.6 });
-  const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-  frameMesh.position.set(0, 0, -0.03);
-  scene.add(frameMesh);
 
   // Render loop
   animate();

@@ -221,9 +221,10 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @remove-art="handleRemoveArt"
         @open-matrix-inspector="isMatrixInspectorOpen = true"
         @open-convolution-filters="isConvolutionFiltersOpen = true"
-        @open-three-scene="isThreeSceneOpen = true"
+        @open-three-scene="handleOpenThreeScene"
         @toggle-painter-grid="showPainterGrid = !showPainterGrid"
         @open-projector-mode="isProjectorModeOpen = true"
       />
@@ -278,9 +279,10 @@
         @capture-camera="handleCaptureCamera"
         @auto-fit="handleAutoFit"
         @open-image-editor="handleOpenImageEditor"
+        @remove-art="handleRemoveArt"
         @open-matrix-inspector="isMatrixInspectorOpen = true"
         @open-convolution-filters="isConvolutionFiltersOpen = true"
-        @open-three-scene="isThreeSceneOpen = true"
+        @open-three-scene="handleOpenThreeScene"
         @toggle-painter-grid="showPainterGrid = !showPainterGrid"
         @open-projector-mode="isProjectorModeOpen = true"
       />
@@ -311,6 +313,7 @@
       :is-open="isThreeSceneOpen"
       :art-asset-url="projectStore.currentProject.artAssetUrl"
       :base-photo-url="projectStore.currentProject.basePhotoUrl"
+      :scene-texture-url="threeSceneTextureUrl"
       @close="isThreeSceneOpen = false"
     />
 
@@ -487,6 +490,7 @@ const isImageEditorOpen = ref(false);
 const isMatrixInspectorOpen = ref(false);
 const isConvolutionFiltersOpen = ref(false);
 const isThreeSceneOpen = ref(false);
+const threeSceneTextureUrl = ref<string | null>(null);
 const isProjectorModeOpen = ref(false);
 const showPainterGrid = ref(false);
 const directArtInputRef = ref<HTMLInputElement | null>(null);
@@ -509,6 +513,22 @@ function handleOpenImageEditor() {
   if (projectStore.currentProject.artAssetUrl) {
     isImageEditorOpen.value = true;
   }
+}
+
+function handleRemoveArt() {
+  projectStore.pushHistory();
+  projectStore.setArtAsset(null);
+}
+
+async function handleOpenThreeScene() {
+  if (viewportRef.value) {
+    try {
+      threeSceneTextureUrl.value = await viewportRef.value.exportHighRes('image/png');
+    } catch {
+      threeSceneTextureUrl.value = null;
+    }
+  }
+  isThreeSceneOpen.value = true;
 }
 
 function handleSaveEditedArt(newUrl: string) {

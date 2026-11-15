@@ -74,15 +74,27 @@
             </button>
           </div>
 
-          <button
-            v-if="hasArt"
-            type="button"
-            class="mt-2 w-full py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-2 transition-colors"
-            @click="$emit('openImageEditor')"
-          >
-            <CropIcon class="w-3.5 h-3.5 text-paint" />
-            <span>Editar ou Cortar Arte</span>
-          </button>
+          <div v-if="hasArt" class="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              class="flex-1 py-2 px-2.5 bg-concrete-700 hover:bg-concrete-600 border border-concrete-600 hover:border-paint rounded-xs text-xs font-mono font-bold text-paper flex items-center justify-center space-x-1.5 transition-colors"
+              @click="$emit('openImageEditor')"
+            >
+              <CropIcon class="w-3.5 h-3.5 text-paint" />
+              <span>Editar / Cortar</span>
+            </button>
+
+            <button
+              type="button"
+              class="py-2 px-2.5 bg-concrete-700 hover:bg-danger/20 border border-concrete-600 hover:border-danger-border rounded-xs text-xs font-mono font-bold text-concrete-300 hover:text-paper flex items-center justify-center space-x-1 transition-colors"
+              aria-label="Remover arte carregada"
+              title="Remover Arte"
+              @click="$emit('removeArt')"
+            >
+              <Trash2Icon class="w-3.5 h-3.5" />
+              <span>Remover</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -591,6 +603,7 @@ import {
   Check as CheckIcon,
   Wand2 as Wand2Icon,
   Crop as CropIcon,
+  Trash2 as Trash2Icon,
   Ruler as RulerIcon,
   Sliders as SlidersIcon,
   Sparkles as SparklesIcon,
@@ -665,6 +678,7 @@ const emit = defineEmits<{
   (e: 'captureCamera'): void;
   (e: 'autoFit'): void;
   (e: 'openImageEditor'): void;
+  (e: 'removeArt'): void;
   (e: 'openMatrixInspector'): void;
   (e: 'openConvolutionFilters'): void;
   (e: 'openThreeScene'): void;
