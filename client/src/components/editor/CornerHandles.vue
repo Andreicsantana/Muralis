@@ -38,7 +38,40 @@
         stroke-dasharray="3,3"
         class="pointer-events-none"
       />
+      <line
+        v-if="screenPoints.length === 4"
+        :x1="topMidPoint.x"
+        :y1="topMidPoint.y"
+        :x2="rotateHandlePoint.x"
+        :y2="rotateHandlePoint.y"
+        stroke="#ee5a3c"
+        stroke-width="1.5"
+        stroke-dasharray="3,2"
+        class="pointer-events-none"
+      />
     </svg>
+
+    <button
+      v-if="screenPoints.length === 4"
+      type="button"
+      class="absolute -ml-4 -mt-4 w-8 h-8 rounded-full bg-[#262523] border-2 border-[#ee5a3c] text-[#ece6d8] hover:bg-[#ee5a3c] hover:text-[#151413] shadow-md cursor-grab active:cursor-grabbing pointer-events-auto flex items-center justify-center transition-colors touch-none z-40"
+      :style="{ left: `${rotateHandlePoint.x}px`, top: `${rotateHandlePoint.y}px` }"
+      title="Segure e arraste para girar a imagem"
+      @pointerdown="startRotateDrag"
+    >
+      <svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+        <polyline points="21 3 21 9 15 9" />
+      </svg>
+    </button>
+
+    <div
+      v-if="isRotating"
+      class="absolute -translate-x-1/2 -translate-y-full px-1.5 py-0.5 bg-[#151413] border border-[#ee5a3c] text-[#ece6d8] font-mono text-[10px] font-bold rounded-[2px] pointer-events-none z-50"
+      :style="{ left: `${rotateHandlePoint.x}px`, top: `${rotateHandlePoint.y - 20}px` }"
+    >
+      {{ Math.round(artRotation ?? 0) }}°
+    </div>
 
     <div
       v-if="centerPoint.x > 0 && centerPoint.y > 0"
@@ -80,6 +113,7 @@ import { Point2D } from '../../engine/homography.js';
 const props = defineProps<{
   cornerPoints: [Point2D, Point2D, Point2D, Point2D];
   canvasBounds: { width: number; height: number; screenX?: number; screenY?: number };
+  artRotation?: number;
 }>();
 
 const emit = defineEmits<{
@@ -87,9 +121,11 @@ const emit = defineEmits<{
   (e: 'updatePoints', points: [Point2D, Point2D, Point2D, Point2D]): void;
   (e: 'dragStart'): void;
   (e: 'dragEnd'): void;
+  (e: 'update:artRotation', angle: number): void;
 }>();
 
 const handlesContainerRef = ref<HTMLDivElement | null>(null);
+const isRotating = ref(false);
 
 const screenPoints = computed(() => {
   const { width, height } = props.canvasBounds;
@@ -104,6 +140,33 @@ const centerPoint = computed(() => {
   const avgX = screenPoints.value.reduce((sum, p) => sum + p.x, 0) / 4;
   const avgY = screenPoints.value.reduce((sum, p) => sum + p.y, 0) / 4;
   return { x: avgX, y: avgY };
+});
+
+const topMidPoint = computed(() => {
+  if (screenPoints.value.length !== 4) return { x: 0, y: 0 };
+  return {
+    x: (screenPoints.value[0].x + screenPoints.value[1].x) / 2,
+    y: (screenPoints.value[0].y + screenPoints.value[1].y) / 2
+  };
+});
+
+const rotateHandlePoint = computed(() => {
+  if (screenPoints.value.length !== 4) return { x: 0, y: 0 };
+  const dx = screenPoints.value[1].x - screenPoints.value[0].x;
+  const dy = screenPoints.value[1].y - screenPoints.value[0].y;
+  const len = Math.hypot(dx, dy) || 1;
+  let nx = dy / len;
+  let ny = -dx / len;
+  const toCenterX = centerPoint.value.x - topMidPoint.value.x;
+  const toCenterY = centerPoint.value.y - topMidPoint.value.y;
+  if (nx * toCenterX + ny * toCenterY > 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return {
+    x: topMidPoint.value.x + nx * 32,
+    y: topMidPoint.value.y + ny * 32
+  };
 });
 
 const polygonPoints = computed(() => {
@@ -131,6 +194,48 @@ function handleWheel(e: WheelEvent) {
     const factor = e.deltaY < 0 ? 1.05 : 0.95;
     scaleQuad(factor);
   }
+}
+
+function startRotateDrag(event: PointerEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = handlesContainerRef.value;
+  if (!container) return;
+
+  const target = event.currentTarget as HTMLElement;
+  try {
+    target.setPointerCapture(event.pointerId);
+  } catch {}
+
+  const rect = container.getBoundingClientRect();
+  const startPointerAngle = Math.atan2(
+    event.clientY - rect.top - centerPoint.value.y,
+    event.clientX - rect.left - centerPoint.value.x
+  );
+  const baseRotation = props.artRotation ?? 0;
+  isRotating.value = true;
+
+  const onPointerMove = (moveEvent: PointerEvent) => {
+    const curAngle = Math.atan2(
+      moveEvent.clientY - rect.top - centerPoint.value.y,
+      moveEvent.clientX - rect.left - centerPoint.value.x
+    );
+    let deltaDeg = ((curAngle - startPointerAngle) * 180) / Math.PI;
+    let nextDeg = ((baseRotation + deltaDeg + 540) % 360) - 180;
+    emit('update:artRotation', Math.round(nextDeg));
+  };
+
+  const onPointerUp = (upEvent: PointerEvent) => {
+    isRotating.value = false;
+    try {
+      target.releasePointerCapture(upEvent.pointerId);
+    } catch {}
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  };
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
 }
 
 function startCornerDrag(index: number, event: PointerEvent) {

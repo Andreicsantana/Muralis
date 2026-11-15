@@ -16,13 +16,33 @@
       ></video>
 
       <CornerHandles
-        v-if="showHandles && isSelected && bounds.width > 0 && artImage && !isMaskMode && !isMeasureMode"
+        v-if="showHandles && isSelected && bounds.width > 0 && artImage && !isMaskMode && !isMeasureMode && !isPaintMode && !isGuideMode"
         :corner-points="cornerPoints"
         :canvas-bounds="bounds"
+        :art-rotation="artRotation ?? 0"
         @update-point="(idx, pt) => $emit('updatePoint', idx, pt)"
         @update-points="(pts) => $emit('updatePoints', pts)"
         @drag-start="() => $emit('dragStart')"
         @drag-end="() => $emit('dragEnd')"
+        @update:art-rotation="(deg) => $emit('updateArtRotation', deg)"
+      />
+
+      <PaintBrush
+        v-if="isPaintMode"
+        ref="paintBrushRef"
+        :brush-size="paintBrushSize || 36"
+        :color="paintColor || '#ffffff'"
+        :opacity="paintOpacity ?? 0.85"
+        :is-eraser="isPaintEraser || false"
+        :canvas-bounds="bounds"
+        @paint-updated="(canvas) => $emit('paintUpdated', canvas)"
+      />
+
+      <WallGuideVectors
+        v-if="isGuideMode && guideVectors && bounds.width > 0"
+        :guide-vectors="guideVectors"
+        :canvas-bounds="bounds"
+        @update:guide-vectors="(val) => $emit('updateGuideVectors', val)"
       />
 
       <MaskBrush
@@ -35,7 +55,7 @@
       />
 
       <WallMeasureOverlay
-        v-if="isMeasureMode || (measurePoints && measurePoints.length === 2)"
+        v-if="isMeasureMode || (pixelsPerMeter && measurePoints && measurePoints.length === 2)"
         :is-active="!!isMeasureMode"
         :points="measurePoints || []"
         :pixels-per-meter="pixelsPerMeter ?? null"
@@ -44,7 +64,7 @@
       />
 
       <div
-        v-if="showHandles && !isSelected && artImage && !isMaskMode && !isMeasureMode"
+        v-if="showHandles && !isSelected && artImage && !isMaskMode && !isMeasureMode && !isPaintMode && !isGuideMode"
         class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-concrete-800 border border-concrete-600 text-concrete-300 font-mono text-[10px] rounded-xs pointer-events-none shadow-subtle"
       >
         Toque na arte para selecionar
@@ -55,12 +75,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, reactive, shallowRef } from 'vue';
-import { Point2D } from '../../engine/homography.js';
+import { Point2D, computeHomography, transformPoint } from '../../engine/homography.js';
 import { BlendMode, compositeLayers, RenderState, ValidBaseImage } from '../../engine/blendEngine.js';
-import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane } from '../../engine/autoFit.js';
+import { calculateAutoFitCorners, applyDirectionToQuad, detectWallPlane, GuideVectors } from '../../engine/autoFit.js';
 import { drawPerspectiveSquaringGrid } from '../../engine/squaringGrid.js';
 import CornerHandles from './CornerHandles.vue';
 import MaskBrush from './MaskBrush.vue';
+import PaintBrush from './PaintBrush.vue';
+import WallGuideVectors from './WallGuideVectors.vue';
 import WallMeasureOverlay from './WallMeasureOverlay.vue';
 
 const props = defineProps<{
@@ -73,6 +95,14 @@ const props = defineProps<{
   contrast: number;
   showHandles: boolean;
   maskCanvas?: HTMLCanvasElement | null;
+  paintCanvas?: HTMLCanvasElement | null;
+  isPaintMode?: boolean;
+  paintColor?: string;
+  paintBrushSize?: number;
+  paintOpacity?: number;
+  isPaintEraser?: boolean;
+  isGuideMode?: boolean;
+  guideVectors?: GuideVectors;
   isCameraActive?: boolean;
   isMaskMode?: boolean;
   brushSize?: number;
@@ -81,6 +111,7 @@ const props = defineProps<{
   measurePoints?: Point2D[];
   pixelsPerMeter?: number | null;
   showPainterGrid?: boolean;
+  artRotation?: number;
 }>();
 
 const emit = defineEmits<{
@@ -91,6 +122,9 @@ const emit = defineEmits<{
   (e: 'cameraFrameCaptured', dataUrl: string): void;
   (e: 'cameraError', error: string): void;
   (e: 'maskUpdated', canvas: HTMLCanvasElement): void;
+  (e: 'paintUpdated', canvas: HTMLCanvasElement): void;
+  (e: 'updateGuideVectors', value: GuideVectors): void;
+  (e: 'updateArtRotation', value: number): void;
   (e: 'updateMeasurePoints', points: Point2D[]): void;
 }>();
 
@@ -98,6 +132,7 @@ const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const maskBrushRef = ref<InstanceType<typeof MaskBrush> | null>(null);
+const paintBrushRef = ref<InstanceType<typeof PaintBrush> | null>(null);
 
 const baseImage = shallowRef<HTMLImageElement | null>(null);
 const artImage = shallowRef<HTMLImageElement | null>(null);
@@ -249,38 +284,22 @@ function captureCameraFrame(): string | null {
   return dataUrl;
 }
 
-function autoFitWall(options?: { scaleFactor?: number; manualSlope?: number | null; verticalOffset?: number }) {
+function autoFitWall(options?: { scaleFactor?: number; manualSlope?: number | null; verticalOffset?: number; guideVectors?: GuideVectors | null }) {
   const baseTarget: ValidBaseImage | null = props.isCameraActive && videoRef.value
     ? videoRef.value
     : baseImage.value;
 
   if (!artImage.value) return;
 
-  const quad = props.cornerPoints;
-  const hasExistingQuad = quad && quad.length === 4 &&
-    Math.abs(quad[1].x - quad[0].x) > 0.05 &&
-    Math.abs(quad[2].y - quad[1].y) > 0.05;
+  const activeGuides = options?.guideVectors !== undefined
+    ? options.guideVectors
+    : (props.isGuideMode && props.guideVectors ? props.guideVectors : null);
 
-  let slope = 0;
-  if (baseTarget) {
-    const wall = detectWallPlane(baseTarget);
-    slope = Math.abs(wall.slope) < 0.04 ? 0 : wall.slope;
-  }
-
-  if (options?.manualSlope !== undefined && options.manualSlope !== null) {
-    slope = options.manualSlope;
-  }
-
-  if (hasExistingQuad) {
-    const updatedCorners = applyDirectionToQuad(quad, slope);
-    emit('updatePoints', updatedCorners);
-  } else {
-    const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, {
-      ...options,
-      manualSlope: slope
-    });
-    emit('updatePoints', autoCorners);
-  }
+  const autoCorners = calculateAutoFitCorners(baseTarget, artImage.value, {
+    ...options,
+    guideVectors: activeGuides
+  });
+  emit('updatePoints', autoCorners);
 
   isSelected.value = true;
   requestRender();
@@ -415,11 +434,13 @@ function render() {
     baseImage: currentBase,
     artImage: artImage.value,
     maskCanvas: props.maskCanvas,
+    paintCanvas: props.paintCanvas,
     cornerPoints: props.cornerPoints,
     blendMode: props.blendMode,
     opacity: props.opacity,
     brightness: props.brightness,
-    contrast: props.contrast
+    contrast: props.contrast,
+    artRotation: props.artRotation ?? 0
   };
 
   const w = canvasRef.value.width;
@@ -459,11 +480,13 @@ async function exportHighRes(mimeType: 'image/png' | 'image/jpeg' = 'image/png')
     baseImage: currentBase,
     artImage: artImage.value,
     maskCanvas: props.maskCanvas,
+    paintCanvas: props.paintCanvas,
     cornerPoints: props.cornerPoints,
     blendMode: props.blendMode,
     opacity: props.opacity,
     brightness: props.brightness,
-    contrast: props.contrast
+    contrast: props.contrast,
+    artRotation: props.artRotation ?? 0
   };
 
   compositeLayers(exportCtx, exportCanvas.width, exportCanvas.height, state, 32);
@@ -481,6 +504,125 @@ async function exportHighRes(mimeType: 'image/png' | 'image/jpeg' = 'image/png')
   return exportCanvas.toDataURL(mimeType, 0.95);
 }
 
+async function exportRectifiedWall(margin = 0.06): Promise<{
+  textureUrl: string;
+  aspect: number;
+  yawAngle: number;
+  roughness: number;
+} | null> {
+  const currentBase: ValidBaseImage | null =
+    props.isCameraActive && videoRef.value ? videoRef.value : baseImage.value;
+  if (!currentBase) return null;
+
+  const naturalW = ('videoWidth' in currentBase ? currentBase.videoWidth : currentBase.naturalWidth) || 800;
+  const naturalH = ('videoHeight' in currentBase ? currentBase.videoHeight : currentBase.naturalHeight) || 600;
+  const scale = Math.min(1, 1280 / Math.max(naturalW, naturalH));
+  const srcW = Math.max(100, Math.round(naturalW * scale));
+  const srcH = Math.max(100, Math.round(naturalH * scale));
+
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = srcW;
+  srcCanvas.height = srcH;
+  const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
+  if (!srcCtx) return null;
+
+  compositeLayers(
+    srcCtx,
+    srcW,
+    srcH,
+    {
+      baseImage: currentBase,
+      artImage: artImage.value,
+      maskCanvas: props.maskCanvas,
+      paintCanvas: props.paintCanvas,
+      cornerPoints: props.cornerPoints,
+      blendMode: props.blendMode,
+      opacity: props.opacity,
+      brightness: props.brightness,
+      contrast: props.contrast,
+      artRotation: props.artRotation ?? 0
+    },
+    24
+  );
+
+  const [tl, tr, br, bl] = props.cornerPoints;
+  const bilerp = (u: number, v: number): Point2D => {
+    const topX = tl.x + (tr.x - tl.x) * u;
+    const topY = tl.y + (tr.y - tl.y) * u;
+    const botX = bl.x + (br.x - bl.x) * u;
+    const botY = bl.y + (br.y - bl.y) * u;
+    return {
+      x: Math.max(0, Math.min(srcW - 1, (topX + (botX - topX) * v) * srcW)),
+      y: Math.max(0, Math.min(srcH - 1, (topY + (botY - topY) * v) * srcH))
+    };
+  };
+
+  const expandedQuad: [Point2D, Point2D, Point2D, Point2D] = [
+    bilerp(-margin, -margin),
+    bilerp(1 + margin, -margin),
+    bilerp(1 + margin, 1 + margin),
+    bilerp(-margin, 1 + margin)
+  ];
+
+  const topW = Math.hypot(expandedQuad[1].x - expandedQuad[0].x, expandedQuad[1].y - expandedQuad[0].y);
+  const botW = Math.hypot(expandedQuad[2].x - expandedQuad[3].x, expandedQuad[2].y - expandedQuad[3].y);
+  const leftH = Math.hypot(expandedQuad[3].x - expandedQuad[0].x, expandedQuad[3].y - expandedQuad[0].y);
+  const rightH = Math.hypot(expandedQuad[2].x - expandedQuad[1].x, expandedQuad[2].y - expandedQuad[1].y);
+
+  const avgW = Math.max(20, (topW + botW) / 2);
+  const avgH = Math.max(20, (leftH + rightH) / 2);
+  const aspect = Math.max(0.4, Math.min(2.8, avgW / avgH));
+
+  const outW = 768;
+  const outH = Math.max(256, Math.min(1024, Math.round(outW / aspect)));
+
+  const dstRect: [Point2D, Point2D, Point2D, Point2D] = [
+    { x: 0, y: 0 },
+    { x: outW, y: 0 },
+    { x: outW, y: outH },
+    { x: 0, y: outH }
+  ];
+
+  const hMat = computeHomography(dstRect, expandedQuad);
+  const srcImgData = srcCtx.getImageData(0, 0, srcW, srcH).data;
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = outW;
+  outCanvas.height = outH;
+  const outCtx = outCanvas.getContext('2d');
+  if (!outCtx) return null;
+
+  const outImg = outCtx.createImageData(outW, outH);
+  const dstData = outImg.data;
+
+  for (let y = 0; y < outH; y++) {
+    for (let x = 0; x < outW; x++) {
+      const pt = transformPoint(hMat, { x, y });
+      const sx = Math.max(0, Math.min(srcW - 1, Math.round(pt.x)));
+      const sy = Math.max(0, Math.min(srcH - 1, Math.round(pt.y)));
+      const sIdx = (sy * srcW + sx) * 4;
+      const dIdx = (y * outW + x) * 4;
+      dstData[dIdx] = srcImgData[sIdx];
+      dstData[dIdx + 1] = srcImgData[sIdx + 1];
+      dstData[dIdx + 2] = srcImgData[sIdx + 2];
+      dstData[dIdx + 3] = 255;
+    }
+  }
+
+  outCtx.putImageData(outImg, 0, 0);
+
+  const ratio = (leftH - rightH) / Math.max(leftH, rightH, 1);
+  const yawAngle = Math.max(-0.55, Math.min(0.55, ratio * 0.9));
+  const wallInfo = detectWallPlane(currentBase);
+
+  return {
+    textureUrl: outCanvas.toDataURL('image/png'),
+    aspect,
+    yawAngle,
+    roughness: wallInfo.textureRoughness
+  };
+}
+
 function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     isSelected.value = false;
@@ -493,9 +635,16 @@ function clearMask() {
   }
 }
 
+function clearPaint() {
+  if (paintBrushRef.value) {
+    paintBrushRef.value.clearPaint();
+  }
+}
+
 defineExpose({
   bounds,
   exportHighRes,
+  exportRectifiedWall,
   updateLayout,
   startCamera,
   stopCamera,
@@ -503,6 +652,7 @@ defineExpose({
   autoFitWall,
   applyDirectionPreset,
   clearMask,
+  clearPaint,
   select: () => (isSelected.value = true),
   deselect: () => (isSelected.value = false)
 });
@@ -526,6 +676,8 @@ watch(
     () => props.brightness,
     () => props.contrast,
     () => props.maskCanvas,
+    () => props.paintCanvas,
+    () => props.artRotation,
     () => props.showPainterGrid
   ],
   () => {

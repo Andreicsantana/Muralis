@@ -58,13 +58,6 @@
 
       <div class="flex-1 relative overflow-hidden flex items-center justify-center p-2 md:p-4 bg-concrete-950">
 
-        <div
-          v-if="isCameraActive"
-          class="absolute top-4 left-4 z-20 pointer-events-none px-2 py-1 bg-concrete-900 border border-paint text-paint rounded-xs text-[10px] font-mono font-bold tracking-wider flex items-center space-x-1.5"
-        >
-          <span class="w-2 h-2 rounded-full bg-paint"></span>
-          <span>● CÂMERA AO VIVO</span>
-        </div>
 
         <ViewportCanvas
           ref="viewportRef"
@@ -85,6 +78,15 @@
           :measure-points="measurePoints"
           :pixels-per-meter="pixelsPerMeter"
           :show-painter-grid="showPainterGrid"
+          :paint-canvas="paintCanvas"
+          :is-paint-mode="isPaintMode"
+          :paint-color="paintColor"
+          :paint-brush-size="paintBrushSize"
+          :paint-opacity="paintOpacity"
+          :is-paint-eraser="isPaintEraser"
+          :is-guide-mode="isGuideMode"
+          :guide-vectors="guideVectors"
+          :art-rotation="artRotation"
           @update-point="handleUpdatePoint"
           @update-points="handleUpdatePoints"
           @drag-start="handleDragStart"
@@ -92,6 +94,9 @@
           @camera-frame-captured="handleCameraFrameCaptured"
           @camera-error="handleCameraError"
           @mask-updated="handleMaskUpdated"
+          @paint-updated="handlePaintUpdated"
+          @update-guide-vectors="(val) => (guideVectors = val)"
+          @update-art-rotation="(deg) => (artRotation = deg)"
           @update-measure-points="(pts) => (measurePoints = pts)"
         />
 
@@ -195,6 +200,13 @@
         :quad-measurement="quadMeasurement"
         :has-measure-line="measurePoints.length === 2"
         :show-painter-grid="showPainterGrid"
+        :is-guide-mode="isGuideMode"
+        :is-paint-mode="isPaintMode"
+        :paint-color="paintColor"
+        :paint-brush-size="paintBrushSize"
+        :paint-opacity="paintOpacity"
+        :is-paint-eraser="isPaintEraser"
+        :art-rotation="artRotation"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -227,6 +239,14 @@
         @open-three-scene="handleOpenThreeScene"
         @toggle-painter-grid="showPainterGrid = !showPainterGrid"
         @open-projector-mode="isProjectorModeOpen = true"
+        @toggle-guide-mode="handleToggleGuideMode"
+        @toggle-paint-mode="handleTogglePaintMode"
+        @update:paint-color="(v) => (paintColor = v)"
+        @update:paint-brush-size="(v) => (paintBrushSize = v)"
+        @update:paint-opacity="(v) => (paintOpacity = v)"
+        @update:is-paint-eraser="(v) => (isPaintEraser = v)"
+        @clear-paint="handleClearPaint"
+        @update:art-rotation="(v) => (artRotation = v)"
       />
     </div>
 
@@ -253,6 +273,13 @@
         :quad-measurement="quadMeasurement"
         :has-measure-line="measurePoints.length === 2"
         :show-painter-grid="showPainterGrid"
+        :is-guide-mode="isGuideMode"
+        :is-paint-mode="isPaintMode"
+        :paint-color="paintColor"
+        :paint-brush-size="paintBrushSize"
+        :paint-opacity="paintOpacity"
+        :is-paint-eraser="isPaintEraser"
+        :art-rotation="artRotation"
         @update:blend-mode="projectStore.setBlendMode"
         @update:opacity="projectStore.setOpacity"
         @update:brightness="projectStore.setBrightness"
@@ -285,6 +312,14 @@
         @open-three-scene="handleOpenThreeScene"
         @toggle-painter-grid="showPainterGrid = !showPainterGrid"
         @open-projector-mode="isProjectorModeOpen = true"
+        @toggle-guide-mode="handleToggleGuideMode"
+        @toggle-paint-mode="handleTogglePaintMode"
+        @update:paint-color="(v) => (paintColor = v)"
+        @update:paint-brush-size="(v) => (paintBrushSize = v)"
+        @update:paint-opacity="(v) => (paintOpacity = v)"
+        @update:is-paint-eraser="(v) => (isPaintEraser = v)"
+        @clear-paint="handleClearPaint"
+        @update:art-rotation="(v) => (artRotation = v)"
       />
     </BottomSheet>
 
@@ -314,6 +349,9 @@
       :art-asset-url="projectStore.currentProject.artAssetUrl"
       :base-photo-url="projectStore.currentProject.basePhotoUrl"
       :scene-texture-url="threeSceneTextureUrl"
+      :full-scene-url="threeFullSceneUrl"
+      :initial-yaw="threeInitialYaw"
+      :initial-roughness="threeInitialRoughness"
       @close="isThreeSceneOpen = false"
     />
 
@@ -372,12 +410,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, triggerRef, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft as ArrowLeftIcon, Camera as CameraIcon, Check as CheckIcon, Upload as UploadIcon, Crop as CropIcon } from 'lucide-vue-next';
 import { useProjectStore } from '../stores/projectStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { Point2D } from '../engine/homography.js';
+import type { GuideVectors } from '../engine/autoFit.js';
 import {
   computePixelsPerMeter,
   measureDistanceMeters,
@@ -405,14 +444,23 @@ const viewportRef = ref<InstanceType<typeof ViewportCanvas> | null>(null);
 
 const mobileSnap = ref<SnapState>('closed');
 const isMaskMode = ref(false);
+const isPaintMode = ref(false);
+const paintCanvas = shallowRef<HTMLCanvasElement | null>(null);
+const paintColor = ref('#FFFFFF');
+const paintBrushSize = ref(36);
+const paintOpacity = ref(0.85);
+const isPaintEraser = ref(false);
+const isGuideMode = ref(false);
+const artRotation = ref(0);
+const guideVectors = ref<GuideVectors>({
+  top: [{ x: 0.2, y: 0.16 }, { x: 0.72, y: 0.28 }],
+  bot: [{ x: 0.2, y: 0.88 }, { x: 0.72, y: 0.68 }]
+});
 const brushSize = ref(30);
 const isEraser = ref(false);
 const maskCanvas = ref<HTMLCanvasElement | null>(null);
 const isMeasureMode = ref(false);
-const measurePoints = ref<Point2D[]>([
-  { x: 0.25, y: 0.5 },
-  { x: 0.75, y: 0.5 }
-]);
+const measurePoints = ref<Point2D[]>([]);
 const referenceMeters = ref(2.0);
 const pixelsPerMeter = ref<number | null>(null);
 
@@ -446,7 +494,39 @@ function handleToggleMaskMode() {
   isMaskMode.value = !isMaskMode.value;
   if (isMaskMode.value) {
     isMeasureMode.value = false;
+    isPaintMode.value = false;
+    isGuideMode.value = false;
   }
+}
+
+function handleTogglePaintMode() {
+  isPaintMode.value = !isPaintMode.value;
+  if (isPaintMode.value) {
+    isMaskMode.value = false;
+    isMeasureMode.value = false;
+    isGuideMode.value = false;
+  }
+}
+
+function handleToggleGuideMode() {
+  isGuideMode.value = !isGuideMode.value;
+  if (isGuideMode.value) {
+    isMaskMode.value = false;
+    isMeasureMode.value = false;
+    isPaintMode.value = false;
+  }
+}
+
+function handlePaintUpdated(canvas: HTMLCanvasElement) {
+  paintCanvas.value = canvas;
+  triggerRef(paintCanvas);
+}
+
+function handleClearPaint() {
+  if (viewportRef.value) {
+    viewportRef.value.clearPaint();
+  }
+  paintCanvas.value = null;
 }
 
 function handleToggleMeasureMode() {
@@ -491,6 +571,9 @@ const isMatrixInspectorOpen = ref(false);
 const isConvolutionFiltersOpen = ref(false);
 const isThreeSceneOpen = ref(false);
 const threeSceneTextureUrl = ref<string | null>(null);
+const threeFullSceneUrl = ref<string | null>(null);
+const threeInitialYaw = ref(0);
+const threeInitialRoughness = ref(0.65);
 const isProjectorModeOpen = ref(false);
 const showPainterGrid = ref(false);
 const directArtInputRef = ref<HTMLInputElement | null>(null);
@@ -523,9 +606,22 @@ function handleRemoveArt() {
 async function handleOpenThreeScene() {
   if (viewportRef.value) {
     try {
-      threeSceneTextureUrl.value = await viewportRef.value.exportHighRes('image/png');
+      const [fullUrl, rectified] = await Promise.all([
+        viewportRef.value.exportHighRes('image/png'),
+        viewportRef.value.exportRectifiedWall(0.06)
+      ]);
+      threeFullSceneUrl.value = fullUrl;
+      if (rectified) {
+        threeSceneTextureUrl.value = rectified.textureUrl;
+        threeInitialYaw.value = rectified.yawAngle;
+        threeInitialRoughness.value = rectified.roughness;
+      } else {
+        threeSceneTextureUrl.value = fullUrl;
+        threeInitialYaw.value = 0;
+      }
     } catch {
       threeSceneTextureUrl.value = null;
+      threeFullSceneUrl.value = null;
     }
   }
   isThreeSceneOpen.value = true;

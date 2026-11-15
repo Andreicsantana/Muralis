@@ -10,11 +10,51 @@ export interface RenderState {
   baseImage: ValidBaseImage | null;
   artImage: ValidArtImage | null;
   maskCanvas?: HTMLCanvasElement | OffscreenCanvas | null;
+  paintCanvas?: HTMLCanvasElement | OffscreenCanvas | null;
   cornerPoints: [Point2D, Point2D, Point2D, Point2D];
   blendMode: BlendMode;
   opacity: number;
   brightness: number;
   contrast: number;
+  artRotation?: number;
+}
+
+function getRotatedArtSource(
+  artImage: ValidArtImage,
+  degrees: number
+): ValidArtImage {
+  const normalized = ((degrees % 360) + 360) % 360;
+  if (normalized < 0.01 || normalized > 359.99) return artImage;
+
+  const srcW = 'naturalWidth' in artImage && artImage.naturalWidth ? artImage.naturalWidth : artImage.width;
+  const srcH = 'naturalHeight' in artImage && artImage.naturalHeight ? artImage.naturalHeight : artImage.height;
+  if (!srcW || !srcH) return artImage;
+
+  const rad = (normalized * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const outW = Math.max(1, Math.round(srcW * cos + srcH * sin));
+  const outH = Math.max(1, Math.round(srcW * sin + srcH * cos));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return artImage;
+
+  ctx.translate(outW / 2, outH / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(artImage, -srcW / 2, -srcH / 2, srcW, srcH);
+  return canvas;
+}
+
+function resolveCompositeOp(mode: BlendMode): GlobalCompositeOperation {
+  switch (mode) {
+    case 'multiply': return 'multiply';
+    case 'overlay': return 'overlay';
+    case 'soft-light': return 'soft-light';
+    default: return 'source-over';
+  }
 }
 
 export function compositeLayers(
@@ -28,6 +68,26 @@ export function compositeLayers(
 
   if (state.baseImage) {
     targetCtx.drawImage(state.baseImage, 0, 0, width, height);
+  }
+
+  if (state.paintCanvas) {
+    const paintTemp = document.createElement('canvas');
+    paintTemp.width = width;
+    paintTemp.height = height;
+    const paintCtx = paintTemp.getContext('2d');
+    if (paintCtx) {
+      paintCtx.drawImage(state.paintCanvas, 0, 0, width, height);
+      if (state.maskCanvas) {
+        paintCtx.save();
+        paintCtx.globalCompositeOperation = 'destination-out';
+        paintCtx.drawImage(state.maskCanvas, 0, 0, width, height);
+        paintCtx.restore();
+      }
+      targetCtx.save();
+      targetCtx.globalCompositeOperation = resolveCompositeOp(state.blendMode);
+      targetCtx.drawImage(paintTemp, 0, 0);
+      targetCtx.restore();
+    }
   }
 
   if (!state.artImage) {
@@ -55,7 +115,8 @@ export function compositeLayers(
     { x: state.cornerPoints[3].x * width, y: state.cornerPoints[3].y * height }
   ];
 
-  drawWarpedImage(tempCtx, state.artImage, absoluteCorners, { subdivisions });
+  const artSource = state.artRotation ? getRotatedArtSource(state.artImage, state.artRotation) : state.artImage;
+  drawWarpedImage(tempCtx, artSource, absoluteCorners, { subdivisions });
 
   if (state.brightness !== 1.0 || state.contrast !== 1.0) {
     applyAdjustments(tempCtx, width, height, state.brightness, state.contrast);
@@ -71,20 +132,7 @@ export function compositeLayers(
   targetCtx.save();
   targetCtx.globalAlpha = Math.max(0, Math.min(1, state.opacity));
 
-  switch (state.blendMode) {
-    case 'multiply':
-      targetCtx.globalCompositeOperation = 'multiply';
-      break;
-    case 'overlay':
-      targetCtx.globalCompositeOperation = 'overlay';
-      break;
-    case 'soft-light':
-      targetCtx.globalCompositeOperation = 'soft-light';
-      break;
-    default:
-      targetCtx.globalCompositeOperation = 'source-over';
-      break;
-  }
+  targetCtx.globalCompositeOperation = resolveCompositeOp(state.blendMode);
 
   targetCtx.drawImage(tempCanvas, 0, 0);
   targetCtx.restore();

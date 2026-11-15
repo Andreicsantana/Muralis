@@ -174,6 +174,65 @@
           />
         </div>
 
+        <div class="pt-1 space-y-1.5">
+          <button
+            type="button"
+            class="w-full py-1.5 px-2.5 text-xs font-mono font-bold rounded-xs border transition-colors flex items-center justify-between"
+            :class="
+              isGuideMode
+                ? 'bg-paint border-paint text-paint-dark'
+                : 'bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper'
+            "
+            @click="$emit('toggleGuideMode')"
+          >
+            <span>Vetores do Muro (Topo / Base)</span>
+            <span class="text-[10px]">{{ isGuideMode ? 'ATIVO' : 'OFF' }}</span>
+          </button>
+          <p v-if="isGuideMode" class="text-[10px] font-mono text-concrete-300 leading-snug">
+            Arraste os vetores laranja (topo) e azul (base) nas bordas do muro e clique em Ajustar à Parede.
+          </p>
+        </div>
+
+        <div class="space-y-1.5 pt-1">
+          <div class="flex justify-between text-xs font-mono text-concrete-300">
+            <span>Rotação da imagem</span>
+            <span class="text-paper font-bold">{{ Math.round(artRotation ?? 0) }}°</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              class="py-1 text-[11px] font-mono font-bold rounded-xs border bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper hover:border-paint transition-colors"
+              @click="$emit('update:artRotation', ((artRotation ?? 0) - 90 + 540) % 360 - 180)"
+            >
+              -90°
+            </button>
+            <button
+              type="button"
+              class="py-1 text-[11px] font-mono font-bold rounded-xs border transition-colors"
+              :class="(artRotation ?? 0) === 0 ? 'bg-paint border-paint text-paint-dark' : 'bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper'"
+              @click="$emit('update:artRotation', 0)"
+            >
+              0°
+            </button>
+            <button
+              type="button"
+              class="py-1 text-[11px] font-mono font-bold rounded-xs border bg-concrete-750 border-concrete-600 text-concrete-300 hover:text-paper hover:border-paint transition-colors"
+              @click="$emit('update:artRotation', ((artRotation ?? 0) + 90 + 540) % 360 - 180)"
+            >
+              +90°
+            </button>
+          </div>
+          <input
+            type="range"
+            min="-180"
+            max="180"
+            step="1"
+            :value="artRotation ?? 0"
+            class="w-full"
+            @input="(e) => $emit('update:artRotation', parseFloat((e.target as HTMLInputElement).value))"
+          />
+        </div>
+
         <!-- Slider de Posição Vertical -->
         <div class="space-y-1">
           <div class="flex justify-between text-xs font-mono text-concrete-300">
@@ -403,6 +462,112 @@
             @click="$emit('clearMask')"
           >
             Limpar Máscara
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-concrete-700/60">
+          <span class="text-xs font-mono text-concrete-200 font-bold">Pintar Muro (Ao Redor)</span>
+          <button
+            type="button"
+            class="px-2.5 py-1 text-xs font-mono font-bold rounded-xs border transition-colors"
+            :class="
+              isPaintMode
+                ? 'bg-paint border-paint text-paint-dark'
+                : 'bg-concrete-700 border-concrete-600 text-concrete-300 hover:text-paper'
+            "
+            @click="$emit('togglePaintMode')"
+          >
+            {{ isPaintMode ? 'Ativo' : 'Ativar' }}
+          </button>
+        </div>
+
+        <div v-if="isPaintMode" class="space-y-3 bg-concrete-900 p-3 rounded-xs border border-concrete-600">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-mono text-concrete-300">Cor da Tinta:</span>
+            <div class="flex items-center gap-1.5">
+              <button
+                v-for="swatch in paintSwatches"
+                :key="swatch"
+                type="button"
+                class="w-4 h-4 rounded-xs border"
+                :class="paintColor === swatch ? 'border-white scale-110' : 'border-concrete-600'"
+                :style="{ backgroundColor: swatch }"
+                @click="$emit('update:paintColor', swatch)"
+              ></button>
+              <input
+                type="color"
+                :value="paintColor"
+                class="w-6 h-5 p-0 border border-concrete-600 rounded-xs bg-transparent cursor-pointer"
+                @input="(e) => $emit('update:paintColor', (e.target as HTMLInputElement).value)"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-xs border text-center transition-colors"
+              :class="
+                !isPaintEraser
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 text-concrete-300'
+              "
+              @click="$emit('update:isPaintEraser', false)"
+            >
+              Pincel
+            </button>
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-mono font-bold rounded-xs border text-center transition-colors"
+              :class="
+                isPaintEraser
+                  ? 'bg-paint border-paint text-paint-dark'
+                  : 'bg-concrete-700 border-concrete-600 text-concrete-300'
+              "
+              @click="$emit('update:isPaintEraser', true)"
+            >
+              Borracha
+            </button>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Tamanho do Pincel:</span>
+              <span class="text-paper font-bold">{{ paintBrushSize }}px</span>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="140"
+              step="5"
+              :value="paintBrushSize"
+              class="w-full"
+              @input="(e) => $emit('update:paintBrushSize', parseInt((e.target as HTMLInputElement).value))"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono text-concrete-300">
+              <span>Opacidade da Tinta:</span>
+              <span class="text-paper font-bold">{{ Math.round((paintOpacity ?? 0.85) * 100) }}%</span>
+            </div>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.05"
+              :value="paintOpacity"
+              class="w-full"
+              @input="(e) => $emit('update:paintOpacity', parseFloat((e.target as HTMLInputElement).value))"
+            />
+          </div>
+
+          <button
+            type="button"
+            class="w-full py-1.5 text-xs font-mono font-bold text-concrete-300 hover:text-paper border border-concrete-600 rounded-xs bg-concrete-800 transition-colors"
+            @click="$emit('clearPaint')"
+          >
+            Limpar Pintura
           </button>
         </div>
       </div>
@@ -635,6 +800,13 @@ const props = withDefaults(
     quadMeasurement?: QuadMeasurement | null;
     hasMeasureLine?: boolean;
     showPainterGrid?: boolean;
+    isGuideMode?: boolean;
+    isPaintMode?: boolean;
+    paintColor?: string;
+    paintBrushSize?: number;
+    paintOpacity?: number;
+    isPaintEraser?: boolean;
+    artRotation?: number;
   }>(),
   {
     artScale: 0.70,
@@ -647,7 +819,14 @@ const props = withDefaults(
     measuredLineText: '',
     quadMeasurement: null,
     hasMeasureLine: false,
-    showPainterGrid: false
+    showPainterGrid: false,
+    isGuideMode: false,
+    isPaintMode: false,
+    paintColor: '#FFFFFF',
+    paintBrushSize: 36,
+    paintOpacity: 0.85,
+    isPaintEraser: false,
+    artRotation: 0
   }
 );
 
@@ -684,6 +863,14 @@ const emit = defineEmits<{
   (e: 'openThreeScene'): void;
   (e: 'togglePainterGrid'): void;
   (e: 'openProjectorMode'): void;
+  (e: 'toggleGuideMode'): void;
+  (e: 'togglePaintMode'): void;
+  (e: 'update:paintColor', val: string): void;
+  (e: 'update:paintBrushSize', val: number): void;
+  (e: 'update:paintOpacity', val: number): void;
+  (e: 'update:isPaintEraser', val: boolean): void;
+  (e: 'clearPaint'): void;
+  (e: 'update:artRotation', val: number): void;
 }>();
 
 const verticalPositionLabel = computed(() => {
@@ -693,6 +880,7 @@ const verticalPositionLabel = computed(() => {
   return 'Centro';
 });
 
+const paintSwatches = ['#FFFFFF', '#111111', '#E63946', '#F4A261', '#2A9D8F', '#264653'];
 const baseFileInputRef = ref<HTMLInputElement | null>(null);
 const artFileInputRef = ref<HTMLInputElement | null>(null);
 

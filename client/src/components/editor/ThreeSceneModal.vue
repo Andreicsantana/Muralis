@@ -50,7 +50,30 @@
 
         <!-- 3D Controls Sidebar -->
         <div class="w-full md:w-72 bg-concrete-800 border-t md:border-t-0 md:border-l border-concrete-700 p-4 overflow-y-auto space-y-4 text-xs font-mono shrink-0">
-          <!-- Camera Mode Toggle -->
+          <div v-if="fullSceneUrl && sceneTextureUrl">
+            <span class="text-paint font-bold text-[11px] uppercase tracking-wider block mb-1.5">
+              0. Enquadramento 3D
+            </span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                class="py-1.5 px-2 border rounded-xs font-mono text-center transition-colors"
+                :class="focusWallOnly ? 'bg-paint text-paint-dark border-paint font-bold' : 'bg-concrete-900 border-concrete-700 text-concrete-300'"
+                @click="toggleFocusMode(true)"
+              >
+                Muro + Arte
+              </button>
+              <button
+                type="button"
+                class="py-1.5 px-2 border rounded-xs font-mono text-center transition-colors"
+                :class="!focusWallOnly ? 'bg-paint text-paint-dark border-paint font-bold' : 'bg-concrete-900 border-concrete-700 text-concrete-300'"
+                @click="toggleFocusMode(false)"
+              >
+                Cena Inteira
+              </button>
+            </div>
+          </div>
+
           <div>
             <span class="text-paint font-bold text-[11px] uppercase tracking-wider block mb-1.5">
               1. Projeção de Câmera
@@ -243,6 +266,9 @@ const props = defineProps<{
   artAssetUrl: string | null;
   basePhotoUrl: string | null;
   sceneTextureUrl?: string | null;
+  fullSceneUrl?: string | null;
+  initialYaw?: number;
+  initialRoughness?: number;
 }>();
 
 defineEmits<{
@@ -252,6 +278,7 @@ defineEmits<{
 const canvasContainerRef = ref<HTMLDivElement | null>(null);
 
 const isOrthographic = ref(false);
+const focusWallOnly = ref(true);
 const ambientIntensity = ref(0.6);
 const lightIntensity = ref(2.5);
 const roughness = ref(0.7);
@@ -286,6 +313,11 @@ watch(
   () => props.isOpen,
   (val) => {
     if (val) {
+      focusWallOnly.value = true;
+      if (props.initialRoughness !== undefined) {
+        roughness.value = Number(props.initialRoughness.toFixed(2));
+      }
+      cameraOrbit.sphericalTheta = props.initialYaw ?? 0;
       setTimeout(() => initThree(), 50);
     } else {
       disposeThree();
@@ -382,7 +414,9 @@ function initThree() {
   frameMesh.position.set(0, 0.1, -0.04);
   scene.add(frameMesh);
 
-  const textureSource = props.sceneTextureUrl || props.basePhotoUrl || props.artAssetUrl;
+  const textureSource = focusWallOnly.value
+    ? (props.sceneTextureUrl || props.fullSceneUrl || props.basePhotoUrl || props.artAssetUrl)
+    : (props.fullSceneUrl || props.sceneTextureUrl || props.basePhotoUrl || props.artAssetUrl);
   if (textureSource) {
     const loader = new THREE.TextureLoader();
     loader.load(textureSource, (texture) => {
@@ -435,6 +469,12 @@ function setCameraMode(ortho: boolean) {
   isOrthographic.value = ortho;
   activeCamera = ortho ? orthographicCamera : perspectiveCamera;
   updateCameraPosition();
+}
+
+function toggleFocusMode(wallOnly: boolean) {
+  focusWallOnly.value = wallOnly;
+  cameraOrbit.sphericalTheta = wallOnly ? (props.initialYaw ?? 0) : 0;
+  initThree();
 }
 
 function updateLighting() {

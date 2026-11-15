@@ -47,4 +47,28 @@ describe('autoFit', () => {
       expect(pt.y).toBeLessThanOrEqual(0.99);
     }
   });
+
+  it('fits artwork proportionally along perspective guide vectors', () => {
+    const mockBase = { width: 1000, height: 600 } as HTMLCanvasElement;
+    const mockArt = { width: 500, height: 500 } as HTMLCanvasElement;
+
+    const quad = calculateAutoFitCorners(mockBase, mockArt, {
+      guideVectors: {
+        top: [
+          { x: 0.21, y: 0.08 },
+          { x: 0.55, y: 0.26 }
+        ],
+        bot: [
+          { x: 0.21, y: 0.94 },
+          { x: 0.55, y: 0.68 }
+        ]
+      }
+    });
+
+    expect(quad[0].x).toBeGreaterThanOrEqual(0.2);
+    expect(quad[1].x).toBeLessThanOrEqual(0.56);
+    expect(quad[0].y).toBeLessThan(quad[1].y);
+    expect(quad[3].y).toBeGreaterThan(quad[2].y);
+    expect(quad[3].y - quad[0].y).toBeGreaterThan(quad[2].y - quad[1].y);
+  });
 });
